@@ -44,6 +44,15 @@ def openSectionSplice(filename):
 
     
 def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
+    affineHoles = []
+    affineCores = []
+    affineCoreTypes = []
+    affineCSFs = []
+    affineCCSFs = []
+    affineCumOffs = []
+    
+    seenCores = [] # list of cores that have already been added to affine
+    
     topCSFs = []
     topCCSFs = []
     botCSFs = []
@@ -101,6 +110,19 @@ def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
                 affine += overlap 
                 print "   interval type APPEND, adjusting affine to {}m to avoid {}m overlap".format(affine, overlap)
             
+        # create data for corresponding affine
+        holecore = str(hole) + str(core)
+        if holecore not in seenCores:
+            seenCores.append(str(hole) + str(core))
+            affineHoles.append(hole)
+            affineCores.append(core)
+            affineCoreTypes.append(row['CoreType'])
+            affineCSFs.append(shiftTop)
+            affineCCSFs.append(shiftTop + affine)
+            affineCumOffs.append(affine)
+        else:
+            print "ERROR: holecore {} already seen".format(holecore)
+        
         # create new column data 
         topCSFs.append(shiftTop)
         topCCSFs.append(shiftTop + affine)
@@ -116,7 +138,26 @@ def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
             print "    ERROR: interval top {} at or below interval bottom {} in MBLF".format(shiftTop, shiftBot)
         
         sptype = row['SpliceType']
-        
+
+    # todo: create rows in a less gross way
+    # done parsing, create affine table
+    affDF = pandas.DataFrame()
+    affDF.insert(0, 'Hole', pandas.Series(affineHoles))
+    affDF.insert(0, 'Site', "1") # insert Site now that a complete index exists thanks to Hole
+    affDF.insert(2, 'Core', pandas.Series(affineCores))
+    affDF.insert(3, 'CoreType', pandas.Series(affineCoreTypes))
+    affDF.insert(4, 'Depth CSF (m)', pandas.Series(affineCSFs))
+    affDF.insert(5, 'Depth CCSF (m)', pandas.Series(affineCCSFs))
+    affDF.insert(6, "Cumulative Offset", pandas.Series(affineCumOffs))
+    affDF.insert(7, "Differential Offset", 0.0)
+    affDF.insert(8, "Growth Rate", "")
+    affDF.insert(9, "Shift Type", "TIE")
+    affDF.insert(10, "Data Used", "")
+    affDF.insert(11, "Quality Comment", "")
+    print "creating affine table, types:"
+    print affDF.dtypes
+    affDF.to_csv("/Users/bgrivna/Desktop/Affine_test_1.csv", index=False)
+    
     # done parsing, create final dataframe for export
     sitDF = secsplice.copy()
     sitDF.insert(6, 'Top Depth CSF-A', pandas.Series(topCSFs))
