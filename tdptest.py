@@ -42,16 +42,29 @@ def openSectionSplice(filename):
     
     return splice
 
+# get total depth of a section offset using SectionSummary data and curated lengths if available
+def getOffsetDepth(secsumm, site, hole, core, section, offset, compress=True):
+    secTop = secsumm.getSectionTop(site, hole, core, section)
+    secBot = secsumm.getSectionBot(site, hole, core, section)
+    print "   section: {}-{}{}-{}, top = {}m, bot = {}m".format(site, hole, core, section, secTop, secBot)
+    print "   section offset = {}cm + {}m = {}m".format(offset, secTop, secBot + offset/100.0)
+
+    curatedLength = secsumm.getSectionLength(site, hole, core, section)
+    if offset/100.0 > curatedLength:
+        print "ERROR: top offset {}cm is beyond curated length of section {}m".format(offset, curatedLength)
+        
+    # if compress=True, compress depth to drilled interval
+    drilledLength = secBot - secTop
+    compFactor = 1.0
+    if compress and curatedLength > drilledLength:
+        compFactor = drilledLength / curatedLength
+        
+    return secTop + (offset/100.0 * compFactor)
+
     
 def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
-    affineHoles = []
-    affineCores = []
-    affineCoreTypes = []
-    affineCSFs = []
-    affineCCSFs = []
-    affineCumOffs = []
-    
     seenCores = [] # list of cores that have already been added to affine
+    affineRows = [] # list of dicts, each representing a generated affine table row
     
     topCSFs = []
     topCCSFs = []
@@ -67,28 +80,12 @@ def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
         core = row['Core']
         top = row['TopSection']
         topOff = row['TopOffset']
-        topDepth = secsumm.getSectionTop(site, hole, core, top)
-        secBot = secsumm.getSectionBot(site, hole, core, top)
-        print "   top section: {}-{}{}-{}, top = {}m, bot = {}m".format(site, hole, core, top, topDepth, secBot)
-        print "     top offset = {}cm + {}m = {}m".format(topOff, topDepth, topDepth + topOff/100.0)
-
-        topCuratedLength = secsumm.getSectionLength(site, hole, core, top)
-        shiftTop = topDepth + topOff/100.0
-        if topOff/100.0 > topCuratedLength:
-            print "ERROR: top offset {}cm is beyond curated length of section {}m".format(topOff, topCuratedLength)
+        shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff, compress=True)
         
         bot = row['BottomSection']
         botOff = row['BottomOffset']
-        botDepth = secsumm.getSectionTop(site, hole, core, bot)
-        secBot = secsumm.getSectionBot(site, hole, core, bot)
-        print "   bot section: {}-{}{}-{}, top = {}m, bot = {}m".format(site, hole, core, bot, botDepth, secBot)
-        print "     bot offset = {}cm + {}m = {}m".format(botOff, botDepth, botDepth + botOff/100.0)
+        shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff, compress=True)
         
-        botCuratedLength = secsumm.getSectionLength(site, hole, core, bot)
-        shiftBot = botDepth + botOff/100.0 
-        if botOff/100.0 > botCuratedLength:
-            print "ERROR bottom offset {}cm is beyond curated length of section {}m".format(botOff, botCuratedLength)
-            
         affine = 0.0
         if sptype is None: # first interval
             affine = 0.0
@@ -114,12 +111,10 @@ def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
         holecore = str(hole) + str(core)
         if holecore not in seenCores:
             seenCores.append(str(hole) + str(core))
-            affineHoles.append(hole)
-            affineCores.append(core)
-            affineCoreTypes.append(row['CoreType'])
-            affineCSFs.append(shiftTop)
-            affineCCSFs.append(shiftTop + affine)
-            affineCumOffs.append(affine)
+            affineRow = {'Site':site, 'Hole':hole, 'Core':core, 'Core Type':row['CoreType'], 'Depth CSF (m)':shiftTop,
+                         'Depth CCSF (m)':shiftTop + affine, 'Cumulative Offset (m)': affine, 'Differential Offset (m)': 0.0,
+                         'Growth Rate':'', 'Shift Type':'TIE', 'Data Used':'', 'Quality Comment':''}
+            affineRows.append(affineRow)
         else:
             print "ERROR: holecore {} already seen".format(holecore)
         
@@ -139,21 +134,8 @@ def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
         
         sptype = row['SpliceType']
 
-    # todo: create rows in a less gross way
     # done parsing, create affine table
-    affDF = pandas.DataFrame()
-    affDF.insert(0, 'Hole', pandas.Series(affineHoles))
-    affDF.insert(0, 'Site', "1") # insert Site now that a complete index exists thanks to Hole
-    affDF.insert(2, 'Core', pandas.Series(affineCores))
-    affDF.insert(3, 'CoreType', pandas.Series(affineCoreTypes))
-    affDF.insert(4, 'Depth CSF (m)', pandas.Series(affineCSFs))
-    affDF.insert(5, 'Depth CCSF (m)', pandas.Series(affineCCSFs))
-    affDF.insert(6, "Cumulative Offset", pandas.Series(affineCumOffs))
-    affDF.insert(7, "Differential Offset", 0.0)
-    affDF.insert(8, "Growth Rate", "")
-    affDF.insert(9, "Shift Type", "TIE")
-    affDF.insert(10, "Data Used", "")
-    affDF.insert(11, "Quality Comment", "")
+    affDF = pandas.DataFrame(affineRows, columns=ti.AffineFormat.req)
     print "creating affine table, types:"
     print affDF.dtypes
     affDF.to_csv("/Users/bgrivna/Desktop/Affine_test_1.csv", index=False)
