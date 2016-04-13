@@ -1,0 +1,53 @@
+'''
+Created on Mar 31, 2016
+
+@author: bgrivna
+'''
+
+import os
+
+import tabularImport as ti
+import pandas
+
+class SpliceIntervalRow:
+    def __init__(self, site, hole, core, coreType, topSection, topOffset, topMBSF, topMCD, botSection, botOffset, botMBSF, botMCD, spliceType, dataUsed, comment):
+        self.site = site
+        self.hole = hole
+        self.core = core
+        self.coreType = coreType
+        self.topSection = topSection
+        self.topOffset = topOffset
+        self.topMBSF = topMBSF
+        self.topMCD = topMCD
+        self.botSection = botSection
+        self.botOffset = botOffset
+        self.botMBSF = botMBSF
+        self.botMCD = botMCD
+        self.spliceType = spliceType
+        self.dataUsed = dataUsed
+        self.comment = comment
+        
+    def __repr__(self):
+        fmt = "{}{}-{}{} top {}@{} (mbsf={} mcd={}), bot {}@{} (mbsf={}, mcd={}), {}, {}, {}" 
+        return fmt.format(self.site, self.hole, self.core, self.coreType, self.topSection, self.topOffset, self.topMBSF, self.topMCD,
+                          self.botSection, self.botOffset, self.botMBSF, self.botMCD, self.spliceType, self.dataUsed, self.comment) 
+
+class SpliceIntervalTable:
+    def __init__(self, name, dataframe):
+        self.name = name
+        self.df = dataframe
+        
+    @classmethod
+    def createWithFile(cls, filepath):
+        dataframe = ti.readFile(filepath)
+        ti.forceStringDatatype(ti.SITFormat.strCols, dataframe)
+        return cls(os.path.basename(filepath), dataframe)
+    
+    def getIntervals(self):
+        rows = []
+        for t in self.df.itertuples():
+            row = SpliceIntervalRow(t[1], t[2], t[3], t[4], t[5], t[6], t[7], t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15])
+            rows.append(row)
+        return rows
+
+    # todo: get table summary information

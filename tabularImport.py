@@ -3,14 +3,8 @@ Routines and classes for loading of tabular data and conversion to target format
 '''
 
 import os
-import sys
 
 import pandas
-import wx
-import wx.grid
-
-#import dialog
-
 
 class SectionSummary:
     def __init__(self, name, dataframe):
@@ -100,38 +94,61 @@ class SpliceIntervalTable:
 """ bridge between imported tabular columns and destination format """ 
 class TabularFormat:
     req = [] # list of required column names
-    def __init__(self, name, req):
+    strCols = [] # list of columns whose pandas dtype should be forced to string
+    def __init__(self, name, req, strCols):
         self.name = name
         self.req = req
+        self.strCols = strCols
 
 MeasurementFormat = TabularFormat("Measurement Data",
-                                  ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopOffset', 'BottomOffset', 'Depth'])
+                                  ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data'],
+                                  ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
+SampleFormat = TabularFormat("Sample Data",
+                             ['Exp', 'Site', 'Hole', 'Core', 'Tool', 'Section', 'SectionDepth', 'Depth', 'Data'],
+                             ['Exp', 'Site', 'Hole', 'Core', 'Tool', 'Section'])
 SectionSummaryFormat = TabularFormat("Section Summary", 
-                                     ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopDepth', 'BottomDepth', 'CuratedLength'])
+                                     ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopDepth', 'BottomDepth', 'CuratedLength'],
+                                     ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
 
 AffineFormat = TabularFormat("Affine Table",
                              ['Site', 'Hole', 'Core', 'Core Type', 'Depth CSF (m)', 'Depth CCSF (m)', \
                               'Cumulative Offset (m)', 'Differential Offset (m)', 'Growth Rate', 'Shift Type', \
-                              'Data Used', 'Quality Comment'])
+                              'Data Used', 'Quality Comment'],
+                             ['Site', 'Hole', 'Core', 'Core Type', 'Shift Type', 'Data Used', 'Quality Comment'])
 
 # Splice Interval Table headers: 2.0.2 b8 and earlier
 # brg 1/18/2016: keeping for now, may want to convert from this format
 SITFormat_202_b8 = TabularFormat("Splice Interval Table 2.0.2 b8 and earlier",
                           ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'TopSection', 'TopOffset', \
                            'TopDepthCSF', 'TopDepthCCSF', 'BottomSection', 'BottomOffset', 'BottomDepthCSF', \
-                           'BottomDepthCCSF', 'SpliceType', 'DataUsed', 'Comment'])
+                           'BottomDepthCCSF', 'SpliceType', 'DataUsed', 'Comment'],
+                          ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'TopSection', 'BottomSection', 'SpliceType', 'DataUsed', 'Comment'])
 
 SITFormat = TabularFormat("Splice Interval Table",
                           ['Site', 'Hole', 'Core', 'Core Type', 'Top Section', 'Top Offset', \
                            'Top Depth CSF-A', 'Top Depth CCSF-A', 'Bottom Section', 'Bottom Offset', 'Bottom Depth CSF-A', \
-                           'Bottom Depth CCSF-A', 'Splice Type', 'Data Used', 'Comment'])
+                           'Bottom Depth CCSF-A', 'Splice Type', 'Data Used', 'Comment'],
+                          ['Site', 'Hole', 'Core', 'Core Type', 'Top Section', 'Bottom Section', 'Splice Type', 'Data Used', 'Comment'])
 
 
 # Format for exported core data...may not need RunNo, RawDepth or Offset any longer?
 CoreExportFormat = TabularFormat("Exported Core Data",
                                  ['Exp', 'Site', 'Hole', 'Core', 'CoreType',
                                   'Section', 'TopOffset', 'BottomOffset', 'Depth',
-                                  'Data', 'RunNo', 'RawDepth', 'Offset'])
+                                  'Data', 'RunNo', 'RawDepth', 'Offset'],
+                                 ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section','RunNo'])
+
+MeasurementExportFormat = TabularFormat("Spliced Measurement Data",
+                                 ['Exp', 'Site', 'Hole', 'Core', 'CoreType',
+                                  'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data', 'RawDepth', 'Offset'],
+                                 ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
+
+SampleExportFormat = TabularFormat("Spliced Sample Data",
+                                 ['Exp', 'Site', 'Hole', 'Core', 'Tool',
+                                  'Section', 'SectionDepth', 'Depth', 'Data', 'Offset'],
+                                 ['Exp', 'Site', 'Hole', 'Core', 'Tool', 'Section'])
+
+
 
 def readFile(filepath):
     srcfile = open(filepath, 'rU')
@@ -168,21 +185,11 @@ def stripCells(dataframe):
         except:
             pass
 
-def parseFile(parent, path, goalFormat, checkcols=False):
-    dataframe = None
-    try:
-        dataframe = readFile(path)
-    except:
-        errbox(parent, "Error reading file: {}".format(sys.exc_info()[1]))
-        return None
-
-    if dataframe is None:
-        errbox(parent, "Couldn't import file, unknown error")
-    elif checkcols:
-        fileColCount = len(dataframe.columns.tolist())
-        formatColCount = len(goalFormat.req) 
-        if fileColCount < formatColCount: 
-            errbox(parent, "File contains fewer columns ({}) than the {} format requires ({})".format(fileColCount, goalFormat.name, formatColCount))
-            return None
-
-    return dataframe
+# force pandas column dtype and convert values to object (string)
+def forceStringDatatype(cols, dataframe):
+    for col in cols:
+        dataframe[col] = dataframe[col].astype(object)
+        dataframe[col] = dataframe[col].apply(lambda x: str(x)) # todo: if x != NaN? to avoid line below?
+        
+        # forced string conversion forces all NaN values to the string "nan" - remove these
+        dataframe[col] = dataframe[col].apply(lambda x: "" if x == "nan" else x)

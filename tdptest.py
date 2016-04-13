@@ -1,5 +1,8 @@
 import pandas
 import tabularImport as ti
+import spliceInterval as si
+import measurement as meas
+import sample
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
 def openCorrelatorFunkyFormatFile(filename):
@@ -16,19 +19,11 @@ def openSectionSummaryFile(filename):
     
     # force pandas.dtypes to "object" (string) for ID components
     objcols = ["Exp", "Site", "Hole", "Core", "CoreType", "Section"]
-    forceStringDatatype(objcols, ss.dataframe)
+    ti.forceStringDatatype(objcols, ss.dataframe)
     
     return ss
     # confirm no blank/nan cells - fail to load? ignore such rows and warn user?
-    
-# force pandas column dtype and convert values to object (string)
-def forceStringDatatype(cols, dataframe):
-    for col in cols:
-        dataframe[col] = dataframe[col].astype(object)
-        dataframe[col] = dataframe[col].apply(lambda x: str(x)) # todo: if x != NaN? to avoid line below?
-        
-        # forced string conversion forces all NaN values to the string "nan" - remove these
-        dataframe[col] = dataframe[col].apply(lambda x: "" if x == "nan" else x)
+
 
 def openSectionSplice(filename):
     headers = [ "Site", "Hole", "Core", "CoreType", "TopSection", "TopOffset", "BottomSection", "BottomOffset", "SpliceType", "Comment" ]
@@ -38,7 +33,7 @@ def openSectionSplice(filename):
     
     objcols = ["Site", "Hole", "Core", "CoreType", "TopSection", "BottomSection", "SpliceType", "Comment"]
     
-    forceStringDatatype(objcols, splice)
+    ti.forceStringDatatype(objcols, splice)
     
     return splice
 
@@ -150,9 +145,126 @@ def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
     
     print sitDF.dtypes
     sitDF.to_csv("/Users/bgrivna/Desktop/SIT_test_1.csv", index=False)
+    
+def sparseToSIT():
+    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/TDPSecSumm_AJN_03282016.csv")
+    sp = openSectionSplice("/Users/bgrivna/Desktop/TDP_Site1_splice_test_tweak.csv")
+    convertSectionSpliceToSIT(sp, ss, "/Users/bgrivna/Desktop/SIT_Site1_FOOOO.csv")
+
+def exportSampleData():
+    # load SIT
+    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
+    sit = si.SpliceIntervalTable.createWithFile(sitPath)
+
+    # load sample data from each hole in site 1
+    holes = ["A", "B", "D", "E", "F"]
+    sampleFiles = {}
+    totalSampleRows = 0
+    for hole in holes:
+        path = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-1{}-samples.csv".format(hole)
+        sd = sample.SampleData.createWithFile(hole, path)
+
+        print "Loading sample data file {}...".format(path),
+        print "loaded {} rows".format(sd.rowCount())
+        totalSampleRows += sd.rowCount()
+        sampleFiles[hole] = sd
+
+    print "{} sample data rows loaded from {} files".format(totalSampleRows, len(holes))
+    
+    print "\nApplying SIT to Sample Data..."
+
+    expVals = {'A':[], 'B':[], 'D':[], 'E':[], 'F':[]}
+    
+    sprows = [] # rows comprising spliced dataset
+    rowcount = 0
+    for index, sirow in enumerate(sit.getIntervals()):
+        print "Interval {}: {}".format(index, sirow)
+        sd = sampleFiles[sirow.hole]
+        sdrows = sd.getByRange(sirow.topMBSF, sirow.botMBSF)
+        print "   found {} rows".format(len(sdrows)),
+        if len(sdrows) > 0:
+            print "...top depth = {}, bottom depth = {}".format(sdrows.iloc[0]['Depth'], sdrows.iloc[-1]['Depth'])
+            print sdrows
+        else:
+            print "  ### WARNING: Zero matching rows found in sample data"
+        
+        # track Data values for rows we're exporting in attempt to figure out what's missing
+        for t in sdrows.itertuples():
+            expVals[sirow.hole].append(t[9])
+        
+        affineOffset = sirow.topMCD - sirow.topMBSF
+        
+        # adjust depth column
+        sdrows.rename(columns={'Depth':'RawDepth'}, inplace=True)
+        
+        # round here until we can upgrade to pandas 0.17.0 (see below)
+        sdrows.insert(8, 'Depth', pandas.Series(sdrows['RawDepth'] + affineOffset).round(3))
+        sdrows.insert(9, 'Offset', round(affineOffset, 3))
+        sdrows = sdrows[ti.SampleExportFormat.req] # reorder to reflect export format
+        
+        sprows.append(sdrows)
+        
+        rowcount += len(sdrows)
+        
+    for key, dlist in expVals.items():
+        fileTotal = sampleFiles[key].rowCount()
+        uniqueTotal = len(set(dlist))
+        expTotal = len(dlist)
+        print "Hole {}: {} ({} unique) of {} rows exported ({} not exported)".format(key, expTotal, uniqueTotal, fileTotal, fileTotal - expTotal)
+        
+    print "Total sample rows exported: {}".format(rowcount)
+    
+    exportdf = pandas.concat(sprows)
+
+    # Argh. Introduced in pandas 0.17.0, we're stuck on 0.16.0 for now...
+    # print "Rounding..."
+    #exportdf = exportdf.round({'Depth': 3, 'Offset': 3})
+    
+    ti.writeToFile(exportdf, "/Users/bgrivna/Desktop/TDP_Site1_Samples_export_v2_E_fix.csv")
+
+
+def exportMeasurementData():
+    sitPath = "/Users/bgrivna/Desktop/TDP_Site1_SIT_cols.csv"
+    sit = si.SpliceIntervalTable.createWithFile(sitPath)
+
+    # load measurement data from each hole in site 1
+    mdHoles = ["A", "B", "D", "E", "F"]
+    mdFiles = {}
+    for hole in mdHoles:
+        #mdpath = "testdata/TDP-5055-1{}-gamma.csv".format(hole)
+        #md = meas.MeasurementData.createWithFile(hole, "Natural Gamma", mdpath)
+        mdpath = "/Users/bgrivna/Desktop/TDP Towuti/TDP_MS/TDP-5055-1{}-MS.csv".format(hole)
+        md = meas.MeasurementData.createWithFile(hole, "Magnetic Susceptibility", mdpath)
+
+        print "Loading measurement data file {}".format(mdpath)
+        mdFiles[hole] = md
+        
+    sprows = [] # rows comprising spliced dataset
+    rowcount = 0
+    for index, sirow in enumerate(sit.getIntervals()):
+        print "Interval {}: {}".format(index, sirow)
+        md = mdFiles[sirow.hole]
+        mdrows = md.getByRange(sirow.topMBSF, sirow.botMBSF)
+        #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdRows), mdRows.iloc[0]['Depth'], mdRows.iloc[-1]['Depth'])
+        
+        affineOffset = sirow.topMCD - sirow.topMBSF
+        
+        # adjust depth column
+        mdrows.rename(columns={'Depth':'RawDepth'}, inplace=True)
+        mdrows.insert(8, 'Depth', pandas.Series(mdrows['RawDepth'] + affineOffset))
+        mdrows.insert(9, 'Offset', affineOffset)
+        mdrows = mdrows[ti.MeasurementExportFormat.req] # reorder to reflect export format
+        
+        sprows.append(mdrows)
+        
+        rowcount += len(mdrows)
+        
+    print "Total rows: {}".format(rowcount)
+    
+    exportdf = pandas.concat(sprows)
+    ti.writeToFile(exportdf, "TDP_Site1_MS_export.csv")
 
 
 if __name__ == "__main__":
-    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/TDPSectionSummary_B19tweak.csv")
-    sp = openSectionSplice("/Users/bgrivna/Desktop/TDP_Site1_splice_test_tweak.csv")
-    convertSectionSpliceToSIT(sp, ss, "/Users/bgrivna/Desktop/SIT_Site1_FOOOO.csv")
+    exportSampleData()
+    #exportMeasurementData()
