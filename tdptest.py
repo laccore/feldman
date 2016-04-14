@@ -151,17 +151,15 @@ def sparseToSIT():
     sp = openSectionSplice("/Users/bgrivna/Desktop/TDP_Site1_splice_test_tweak.csv")
     convertSectionSpliceToSIT(sp, ss, "/Users/bgrivna/Desktop/SIT_Site1_FOOOO.csv")
 
-def exportSampleData():
+def exportSampleData(sitPath, sdPathTemplate, holes, exportPath):
     # load SIT
-    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
 
     # load sample data from each hole in site 1
-    holes = ["A", "B", "D", "E", "F"]
     sampleFiles = {}
     totalSampleRows = 0
     for hole in holes:
-        path = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-1{}-samples.csv".format(hole)
+        path = sdPathTemplate.format(hole)
         
         # TODO: NEED WAY TO DETECT AND COPE WITH BAD DATA ROWS, THEY FUCK EVERYTHING UP
         sd = sample.SampleData.createWithFile(hole, path)
@@ -175,7 +173,10 @@ def exportSampleData():
     
     print "\nApplying SIT to Sample Data..."
 
-    expVals = {'A':[], 'B':[], 'D':[], 'E':[], 'F':[]}
+    # TODO: one-liner to create map keyed on hole with empty lists for values?
+    expVals = {} # track exported rows from each hole for reporting purposes
+    for h in holes:
+        expVals[h] = []
     
     sprows = [] # rows comprising spliced dataset
     rowcount = 0
@@ -222,7 +223,7 @@ def exportSampleData():
     # print "Rounding..."
     #exportdf = exportdf.round({'Depth': 3, 'Offset': 3})
     
-    ti.writeToFile(exportdf, "/Users/bgrivna/Desktop/TDP_Site1_Samples_biglist_export.csv")
+    ti.writeToFile(exportdf, exportPath)
 
 
 def exportMeasurementData():
@@ -271,5 +272,9 @@ def exportMeasurementData():
 
 
 if __name__ == "__main__":
-    exportSampleData()
+    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
+    sampleDataTemplate = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-1{}-samples.csv"
+    holes = ["A", "B", "D", "E", "F"]
+    sampleExportPath = "/Users/bgrivna/Desktop/TDP_Site1_Samples_04142016_export.csv"
+    exportSampleData(sitPath, sampleDataTemplate, holes, sampleExportPath)
     #exportMeasurementData()
