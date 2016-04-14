@@ -162,6 +162,8 @@ def exportSampleData():
     totalSampleRows = 0
     for hole in holes:
         path = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-1{}-samples.csv".format(hole)
+        
+        # TODO: NEED WAY TO DETECT AND COPE WITH BAD DATA ROWS, THEY FUCK EVERYTHING UP
         sd = sample.SampleData.createWithFile(hole, path)
 
         print "Loading sample data file {}...".format(path),
@@ -180,7 +182,7 @@ def exportSampleData():
     for index, sirow in enumerate(sit.getIntervals()):
         print "Interval {}: {}".format(index, sirow)
         sd = sampleFiles[sirow.hole]
-        sdrows = sd.getByRange(sirow.topMBSF, sirow.botMBSF)
+        sdrows = sd.getByRangeAndCore(sirow.topMBSF, sirow.botMBSF, sirow.core)
         print "   found {} rows".format(len(sdrows)),
         if len(sdrows) > 0:
             print "...top depth = {}, bottom depth = {}".format(sdrows.iloc[0]['Depth'], sdrows.iloc[-1]['Depth'])
@@ -220,11 +222,11 @@ def exportSampleData():
     # print "Rounding..."
     #exportdf = exportdf.round({'Depth': 3, 'Offset': 3})
     
-    ti.writeToFile(exportdf, "/Users/bgrivna/Desktop/TDP_Site1_Samples_export_v2_E_fix.csv")
+    ti.writeToFile(exportdf, "/Users/bgrivna/Desktop/TDP_Site1_Samples_biglist_export.csv")
 
 
 def exportMeasurementData():
-    sitPath = "/Users/bgrivna/Desktop/TDP_Site1_SIT_cols.csv"
+    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
 
     # load measurement data from each hole in site 1
@@ -233,8 +235,11 @@ def exportMeasurementData():
     for hole in mdHoles:
         #mdpath = "testdata/TDP-5055-1{}-gamma.csv".format(hole)
         #md = meas.MeasurementData.createWithFile(hole, "Natural Gamma", mdpath)
-        mdpath = "/Users/bgrivna/Desktop/TDP Towuti/TDP_MS/TDP-5055-1{}-MS.csv".format(hole)
-        md = meas.MeasurementData.createWithFile(hole, "Magnetic Susceptibility", mdpath)
+#         mdpath = "/Users/bgrivna/Desktop/TDP Towuti/TDP_MS/TDP-5055-1{}-MS.csv".format(hole)
+#         md = meas.MeasurementData.createWithFile(hole, "Magnetic Susceptibility", mdpath)
+        mdpath = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Gamma/TDP-5055-1{}-gamma.csv".format(hole)
+        md = meas.MeasurementData.createWithFile(hole, "Gamma Density", mdpath)
+
 
         print "Loading measurement data file {}".format(mdpath)
         mdFiles[hole] = md
@@ -244,7 +249,7 @@ def exportMeasurementData():
     for index, sirow in enumerate(sit.getIntervals()):
         print "Interval {}: {}".format(index, sirow)
         md = mdFiles[sirow.hole]
-        mdrows = md.getByRange(sirow.topMBSF, sirow.botMBSF)
+        mdrows = md.getByRangeAndCore(sirow.topMBSF, sirow.botMBSF, sirow.core)
         #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdRows), mdRows.iloc[0]['Depth'], mdRows.iloc[-1]['Depth'])
         
         affineOffset = sirow.topMCD - sirow.topMBSF
@@ -262,7 +267,7 @@ def exportMeasurementData():
     print "Total rows: {}".format(rowcount)
     
     exportdf = pandas.concat(sprows)
-    ti.writeToFile(exportdf, "TDP_Site1_MS_export.csv")
+    ti.writeToFile(exportdf, "TDP_Site1_Gamma_export_CoreCheck_04132016.csv")
 
 
 if __name__ == "__main__":

@@ -31,6 +31,10 @@ class MeasurementData:
     # includes depths == mindepth or maxdepth
     def getByRange(self, mindepth, maxdepth):
         return self.df[(self.df.Depth >= mindepth) & (self.df.Depth <= maxdepth)]
+
+    # includes depths == mindepth or maxdepth
+    def getByRangeAndCore(self, mindepth, maxdepth, core):
+        return self.df[(self.df.Depth >= mindepth) & (self.df.Depth <= maxdepth) & (self.df.Core == core)]
     
     def getByCore(self, core):
         return self.df[self.df.Core == core]
