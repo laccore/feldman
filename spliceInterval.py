@@ -49,5 +49,36 @@ class SpliceIntervalTable:
             row = SpliceIntervalRow(t[1], t[2], t[3], t[4], t[5], t[6], t[7], t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15])
             rows.append(row)
         return rows
+        
+    def getCoreOffset(self, site, hole, core):
+        corerow = self.getCoreRow(site, hole, core)
+        if corerow is not None:
+            return corerow["Top Depth CCSF-A"] - corerow["Top Depth CSF-A"]
+        return None
+    
+    def containsCore(self, site, hole, core):
+        corerow = self.getCore(site, hole, core)
+        if corerow is None or len(corerow) == 0:
+            return False
+        if len(corerow) > 1:
+            print "SIT {} contains more than one matching core, WTF???".format(core)
+        return True
+    
+    def getCore(self, site, hole, core):
+        result = self.df[(self.df.Site == site) & (self.df.Hole == hole) & (self.df.Core == core)]
+        #print "SpliceIntervalTable.getCore(): {}{}-{}".format(site, hole, core),
+        if len(result) == 0:
+            return None
+        elif len(result) > 1:
+            print "WARNING: {} matches found for {}{}-{}".format(len(result), site, hole, core)
+        return result
+    
+    def getCoreRow(self, site, hole, core):
+        c = self.getCore(site, hole, core)
+        if len(c) == 0:
+            return None
+        else:
+            return c.iloc[0]
+        
 
     # todo: get table summary information
