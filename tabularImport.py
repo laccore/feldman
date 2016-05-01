@@ -4,6 +4,7 @@ Routines and classes for loading of tabular data and conversion to target format
 
 import os
 
+import numpy
 import pandas
 
 class SectionSummary:
@@ -13,12 +14,17 @@ class SectionSummary:
         
     @classmethod
     def createWithFile(cls, filepath):
-        dataframe = readFile(filepath)
+        dataframe = readFile(filepath, na_values=['?', '??', '???'])
         return cls(os.path.basename(filepath), dataframe)
     
     def containsCore(self, site, hole, core):
         cores = self._findCores(site, hole, core)
         return not cores.empty
+    
+    # get unique cores
+    # TODO: assumes every core has a Section 1, which may be false - ask Anders
+    def getCores(self):
+        return self.dataframe[(self.dataframe.Section == '1')]
     
     # return depth of top of top section, bottom of bottom section
     def getCoreRange(self, site, hole, core):
@@ -29,6 +35,21 @@ class SectionSummary:
             coremax = cores['BottomDepth'].max()
             return round(coremin, 3), round(coremax, 3)
         return None
+    
+    # find core in coreList with top depth closest to that of the passed core
+    def getCoreWithClosestTop(self, site, hole, core, coreList):
+        searchCoreTop = self.getSectionTop(site, hole, core, '1')
+        closestCore = None
+        mindiff = None
+        for corerow in coreList:#self.getCores().iterrows():
+            if corerow.Site == site and corerow.Hole == hole and corerow.Core == core: # skip search core - TODO shouldn't be in list since it's not on-splice!
+                continue
+            diff = abs(corerow.TopDepth - searchCoreTop)
+            if mindiff is None or diff < mindiff:
+                mindiff = diff
+                closestCore = corerow
+        print "Closest core top to off-splice {}{}-{} with top MBLF = {}: on-splice {}{}-{} with top MBLF = {}, diff = {}".format(site, hole, core, searchCoreTop, closestCore.Site, closestCore.Hole, closestCore.Core, closestCore.TopDepth, mindiff)
+        return closestCore
         
     def getSectionTop(self, site, hole, core, section):
         val = self._getSectionValue(site, hole, core, section, 'TopDepth')
@@ -149,10 +170,14 @@ SampleExportFormat = TabularFormat("Spliced Sample Data",
                                  ['Exp', 'Site', 'Hole', 'Core', 'Tool', 'Section'])
 
 
-
-def readFile(filepath):
+def readFile(filepath, na_values=None):
     srcfile = open(filepath, 'rU')
-    dataframe = pandas.read_csv(srcfile, sep=None, skipinitialspace=True, engine='python')
+    # todo: 4/29/2016 add na_values = ['?','??'...] - this forced ?s to NaN, allowing
+    # depth columns to be loaded as type float64. Otherwise, manual deletion of such rows
+    # is required. Unfortunately there's no way to warn user of such rows. Pre-processing
+    # CSVs with python built-in library, then handing those rows off to pandas is one way
+    # to address this, but for now the na_values should be purt good.  
+    dataframe = pandas.read_csv(srcfile, sep=None, skipinitialspace=True, na_values=na_values, engine='python')
     srcfile.close()
     return dataframe
 
@@ -184,6 +209,37 @@ def stripCells(dataframe):
             dataframe[c] = dataframe[c].str.strip()
         except:
             pass
+
+def destroyStrings(col, df):
+    print "DESTROYING STRINGS"
+    df[col] = df[col].apply(lambda x: "" if type(x) is str else x)
+    print df[col]
+
+def forceColumnFloat64(col, df):
+    try:
+        forcedCol = df[col].astype(numpy.float64)
+    except ValueError:
+        raise
+    return forcedCol
+        
+def forceColumnDtype(col, df, dtype):
+    try:
+        forcedCol = df[col].astype(dtype)
+    except ValueError:
+        pass
+
+def forceFloatDatatype(cols, dataframe, destroy=False):
+    for col in cols:
+        forcedCol = None
+        try:
+            forcedCol = forceColumnFloat64(col, dataframe)
+        except ValueError:
+            print "Couldn't convert column {} to float64 datatype".format(col)
+            if destroy:
+                destroyStrings(col, dataframe)
+                forcedCol = forceColumnFloat64(col, dataframe)
+        if forcedCol is not None:
+            dataframe[col] = forcedCol
 
 # force pandas column dtype and convert values to object (string)
 def forceStringDatatype(cols, dataframe):
