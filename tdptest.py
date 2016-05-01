@@ -1,3 +1,11 @@
+'''
+April 14 2016
+Has become a repository for all kinds of useful conversion routines that all desperately
+need to be generalized and modularized in an intelligent way, but for now we're under the
+gun trying to get Towuti its data...
+'''
+
+
 import pandas
 import tabularImport as ti
 import spliceInterval as si
@@ -26,7 +34,7 @@ def openSectionSummaryFile(filename):
 
 
 def openSectionSplice(filename):
-    headers = [ "Site", "Hole", "Core", "CoreType", "TopSection", "TopOffset", "BottomSection", "BottomOffset", "SpliceType", "Comment" ]
+    headers = ["Site", "Hole", "Core", "CoreType", "TopSection", "TopOffset", "BottomSection", "BottomOffset", "SpliceType", "Comment"]
     datfile = open(filename, 'rU')
     splice = pandas.read_csv(datfile, skiprows=1, header=None, names=headers, sep=None, engine='python', na_values="POOP")
     datfile.close()
@@ -36,6 +44,19 @@ def openSectionSplice(filename):
     ti.forceStringDatatype(objcols, splice)
     
     return splice
+
+def openManualCorrelationFile(mcPath):
+    headers = ["Site1", "Hole1", "Core1", "Tool1", "Section1", "SectionDepth1", "Site2", "Hole2", "Core2", "Tool2", "Section2", "SectionDepth2"]
+    mcFile = open(mcPath, 'rU')
+    mancorr = pandas.read_csv(mcFile, skiprows=1, header=None, names=headers, sep=None, engine='python', na_values="POOP")
+    mcFile.close()
+    
+    objcols = ["Site1", "Hole1", "Core1", "Tool1", "Section1", "Site2", "Hole2", "Core2", "Section2", "Tool2"]
+    
+    ti.forceStringDatatype(objcols, mancorr)
+    
+    return ManualCorrelationTable("Jim's Manual Correlation", mancorr)
+    
 
 # get total depth of a section offset using SectionSummary data and curated lengths if available
 def getOffsetDepth(secsumm, site, hole, core, section, offset, compress=True):
@@ -57,7 +78,7 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, compress=True):
     return secTop + (offset/100.0 * compFactor)
 
     
-def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
+def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
     seenCores = [] # list of cores that have already been added to affine
     affineRows = [] # list of dicts, each representing a generated affine table row
     
@@ -133,7 +154,7 @@ def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
     affDF = pandas.DataFrame(affineRows, columns=ti.AffineFormat.req)
     print "creating affine table, types:"
     print affDF.dtypes
-    affDF.to_csv("/Users/bgrivna/Desktop/Affine_test_1.csv", index=False)
+    affDF.to_csv(affineOutPath, index=False)
     
     # done parsing, create final dataframe for export
     sitDF = secsplice.copy()
@@ -144,13 +165,8 @@ def convertSectionSpliceToSIT(secsplice, secsumm, outpath):
     sitDF.insert(13, 'Data Used', "")
     
     print sitDF.dtypes
-    sitDF.to_csv("/Users/bgrivna/Desktop/SIT_test_1.csv", index=False)
+    sitDF.to_csv(sitOutPath, index=False)
     
-def sparseToSIT():
-    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/TDPSecSumm_AJN_03282016.csv")
-    sp = openSectionSplice("/Users/bgrivna/Desktop/TDP_Site1_splice_test_tweak.csv")
-    convertSectionSpliceToSIT(sp, ss, "/Users/bgrivna/Desktop/SIT_Site1_FOOOO.csv")
-
 def exportSampleData(sitPath, sdPathTemplate, holes, exportPath):
     # load SIT
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
@@ -270,11 +286,135 @@ def exportMeasurementData():
     exportdf = pandas.concat(sprows)
     ti.writeToFile(exportdf, "TDP_Site1_Gamma_export_CoreCheck_04132016.csv")
 
+class ManualCorrelationTable:
+    def __init__(self, name, dataframe):
+        self.name = name
+        self.df = dataframe
+        
+    def getOffSpliceCore(self, site, hole, core):
+        # must return a pandas.Series, not a pandas.DataFrame or there will be issues comparing to e.g. SIT rows!
+        # specifically, a "Series lengths must match to compare" error
+        mc = self.df[(self.df.Site1 == site) & (self.df.Hole1 == hole) & (self.df.Core1 == core)]
+        if len(mc) > 0:
+            return mc.iloc[0] # force to Series
+        return None
+    
+    def getOnSpliceCore(self, site, hole, core):
+        return self.df[(self.df.Site2 == site) & (self.df.Hole2 == hole) & (self.df.Core2 == core)]
+    
 
-if __name__ == "__main__":
+class OffSpliceCore:
+    def __init__(self, row):
+        self.osc = row
+        
+    def __repr__(self):
+        return "{}{}-{}".format(self.osc.Site, self.osc.Hole, self.osc.Core)
+
+
+
+def exportOffSpliceAffines(sitPath, ssPath, manualCorrelationPath, exportPath):
+    # load files
+    sit = si.SpliceIntervalTable.createWithFile(sitPath)
+    secsumm = openSectionSummaryFile(ssPath)
+    mancorr = openManualCorrelationFile(manualCorrelationPath)
+
+    # find all off-splice cores: those in section summary that are *not* in SIT
+    offSpliceCores = []
+    onSpliceCores = []
+    ssCores = secsumm.getCores()
+    for index, row in ssCores.iterrows():
+        if not sit.containsCore(row.Site, row.Hole, row.Core):
+            offSpliceCores.append(row)
+        else:
+            onSpliceCores.append(row)
+            
+    print "Found {} off-splice cores in {} section summary cores".format(len(offSpliceCores), len(ssCores))
+#     for row in offSpliceCores:
+#         print "{}{}-{}{}-{}".format(row.Site, row.Hole, row.Core, row.CoreType, row.Section)
+
+    osAffineShifts = {}
+    
+    # for each of the off-splice cores:
+    for osc in offSpliceCores:
+        oscid = "{}{}-{}{}".format(osc.Site, osc.Hole, osc.Core, osc.CoreType)
+        mcc = mancorr.getOffSpliceCore(osc.Site, osc.Hole, osc.Core)
+        if mcc is not None:
+            print "Found manual correlation for {}".format(OffSpliceCore(osc))
+            #print mcc
+        else:
+            pass
+            #print "no match for {}".format(OffSpliceCore(osc))
+            
+        # if that core is in Jim's correlations:
+        if mcc is not None:
+            # if the on-splice "correlation core" is actually on-splice:
+            if sit.containsCore(mcc.Site2, mcc.Hole2, mcc.Core2):
+                #print "   SIT contains core, yay"
+                # use sparse splice to SIT logic to determine affine for that core based on alignment of section depths
+                offSpliceMbsf = getOffsetDepth(secsumm, mcc.Site1, mcc.Hole1, mcc.Core1, mcc.Section1, mcc.SectionDepth1)
+                print "off-splice: {}@{} = {} MBSF".format(oscid, mcc.SectionDepth1, offSpliceMbsf)
+                onSpliceMbsf = getOffsetDepth(secsumm, mcc.Site2, mcc.Hole2, mcc.Core2, mcc.Section2, mcc.SectionDepth2)
+                print "on-splice: {}{}-{}@{} = {} MBSF".format(mcc.Site2, mcc.Hole2, mcc.Core2, mcc.SectionDepth2, onSpliceMbsf)
+                sitOffset = sit.getCoreOffset(mcc.Site2, mcc.Hole2, mcc.Core2)
+                onSpliceMcd = onSpliceMbsf + sitOffset
+                offSpliceOffset = onSpliceMcd - offSpliceMbsf
+                print "   + SIT offset of {} = {} MCD".format(sitOffset, onSpliceMcd)
+                print "   off-splice MBSF {} + {} offset = {} on-splice MCD".format(offSpliceMbsf, offSpliceOffset, onSpliceMcd)
+                
+                # Track affine for that core and confirm that other correlations result in the same affine shift - if not, use original shift and WARN
+                if oscid not in osAffineShifts:
+                    osAffineShifts[oscid] = offSpliceOffset
+                else:
+                    print "New offset for {}: {} (new) vs. {} (existing) - ignoring new!".format(oscid, offSpliceOffset, osAffineShifts[oscid])
+            else:
+                # warn that "correlation core" is NOT on-splice and fall back on default top MBSF approach
+                print "   Warning: alleged correlation core {}{}-{} is NOT on-splice".format(mcc.Site2, mcc.Hole2, mcc.Core2)
+                
+        if oscid not in osAffineShifts:
+            # find on-splice core with top MBSF closest to that of the current core and use its affine shift
+            print "No manual shift for {}, seeking closest top...".format(oscid)
+            closestCore = secsumm.getCoreWithClosestTop(osc.Site, osc.Hole, osc.Core, onSpliceCores)
+            closestCoreOffset = sit.getCoreOffset(closestCore.Site, closestCore.Hole, closestCore.Core)
+            osAffineShifts[oscid] = closestCoreOffset
+            
+    # generate affine rows for each affine and export as CSV - can be combined with existing (on-splice) affine table to create complete table
+    affineRows = []
+    print "Generated affine shifts for off-splice cores:"
+    #sortedCoreKeys = sorted(osAffineShifts.keys())
+    for key, offset in osAffineShifts.items():
+        affineRows.append({'Core ID': key, 'Offset': offset})
+#     for oas in osAffineShifts:
+#         affineRow = {'Site':oas.Site, 'Hole':oas.Hole, 'Core':oas.Core, 'CoreType':oas.CoreType, 'Cumulative Offset (m)':osAffineShifts[oas]}
+#         affineRows.append(affineRow)
+        
+    # create affine file!
+    affDF = pandas.DataFrame(affineRows, columns=["Core ID", "Offset"])
+    print "creating fake mini affine table..."
+    #print affDF.dtypes
+    affDF.to_csv("/Users/bgrivna/Desktop/TDP_Site1_OffSpliceAffineOffsets.csv", index=False)    
+
+def doSampleExport():
     sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
     sampleDataTemplate = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-1{}-samples.csv"
     holes = ["A", "B", "D", "E", "F"]
     sampleExportPath = "/Users/bgrivna/Desktop/TDP_Site1_Samples_04142016_export.csv"
     exportSampleData(sitPath, sampleDataTemplate, holes, sampleExportPath)
+    
+def doOffSpliceAffineExport():
+    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
+    ssPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDPSecSumm_Site1_Only.csv"
+    manCorrPath = "/Users/bgrivna/Desktop/JimOffSpliceCorrelations.csv"
+    exportPath = "/Users/bgrivna/Desktop/offSpliceAffineExport.csv"
+    exportOffSpliceAffines(sitPath, ssPath, manCorrPath, exportPath)
+    
+def doSparseSpliceToSITExport():
+    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/TDP section summary.csv")
+    sp = openSectionSplice("/Users/bgrivna/Desktop/TDP Towuti/Site 2 Exportage/TDP_Site2_SparseSplice.csv")
+    basepath = "/Users/bgrivna/Desktop/"
+    convertSectionSpliceToSIT(sp, ss, basepath + "TDP_Site2_AffineFromSparse.csv", basepath + "TDP_Site2_SITfromSparse.csv")
+
+
+if __name__ == "__main__":
+    doSparseSpliceToSITExport()
+    #doOffSpliceAffineExport()
     #exportMeasurementData()
