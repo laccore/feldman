@@ -12,6 +12,7 @@ import pandas
 import tabularImport as ti
 import data.spliceInterval as si
 import data.measurement as meas
+import data.sectionSummary as ss
 import sample
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
@@ -25,13 +26,13 @@ def openCorrelatorFunkyFormatFile(filename):
 
 # assumes typical CSV format (comma-delimited, no spaces)
 def openSectionSummaryFile(filename):
-    ss = ti.SectionSummary.createWithFile(filename)
+    secsumm = ss.SectionSummary.createWithFile(filename)
     
     # force pandas.dtypes to "object" (string) for ID components
     objcols = ["Exp", "Site", "Hole", "Core", "CoreType", "Section"]
-    ti.forceStringDatatype(objcols, ss.dataframe)
+    ti.forceStringDatatype(objcols, secsumm.dataframe)
     
-    return ss
+    return secsumm
     # confirm no blank/nan cells - fail to load? ignore such rows and warn user?
 
 
@@ -279,7 +280,7 @@ def exportMeasurementData(sitPath, measDataTemplate, holes, exportPath):
         mdrows.rename(columns={'Depth':'RawDepth'}, inplace=True)
         mdrows.insert(8, 'Depth', pandas.Series(mdrows['RawDepth'] + affineOffset))
         mdrows.insert(9, 'Offset', affineOffset)
-        mdrows = mdrows[ti.MeasurementExportFormat.req] # reorder to reflect export format
+        mdrows = mdrows[meas.MeasurementExportFormat.req] # reorder to reflect export format
         
         sprows.append(mdrows)
         

@@ -16,6 +16,16 @@ class AffineTransform:
         self.identity = identity
         self.offset = offset
 
+MeasurementFormat = ti.TabularFormat("Measurement Data",
+                                     ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data'],
+                                     ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
+
+MeasurementExportFormat = ti.TabularFormat("Spliced Measurement Data",
+                                             ['Exp', 'Site', 'Hole', 'Core', 'CoreType',
+                                              'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data', 'RawDepth', 'Offset'],
+                                             ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
+
+
 class MeasurementData:
     def __init__(self, hole, datatype, dataframe):
         self.hole = hole
@@ -25,7 +35,7 @@ class MeasurementData:
     @classmethod
     def createWithFile(cls, hole, datatype, filepath):
         dataframe = ti.readFile(filepath)
-        ti.forceStringDatatype(ti.MeasurementFormat.strCols, dataframe)
+        ti.forceStringDatatype(MeasurementFormat.strCols, dataframe)
         return cls(hole, datatype, dataframe)
     
     # includes depths == mindepth or maxdepth

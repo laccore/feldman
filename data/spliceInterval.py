@@ -9,6 +9,21 @@ import os
 import tabularImport as ti
 import pandas
 
+# Splice Interval Table headers: 2.0.2 b8 and earlier
+# brg 1/18/2016: keeping for now, may want to convert from this format
+SITFormat_202_b8 = ti.TabularFormat("Splice Interval Table 2.0.2 b8 and earlier",
+                          ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'TopSection', 'TopOffset', \
+                           'TopDepthCSF', 'TopDepthCCSF', 'BottomSection', 'BottomOffset', 'BottomDepthCSF', \
+                           'BottomDepthCCSF', 'SpliceType', 'DataUsed', 'Comment'],
+                          ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'TopSection', 'BottomSection', 'SpliceType', 'DataUsed', 'Comment'])
+
+SITFormat = ti.TabularFormat("Splice Interval Table",
+                          ['Site', 'Hole', 'Core', 'Core Type', 'Top Section', 'Top Offset', \
+                           'Top Depth CSF-A', 'Top Depth CCSF-A', 'Bottom Section', 'Bottom Offset', 'Bottom Depth CSF-A', \
+                           'Bottom Depth CCSF-A', 'Splice Type', 'Data Used', 'Comment'],
+                          ['Site', 'Hole', 'Core', 'Core Type', 'Top Section', 'Bottom Section', 'Splice Type', 'Data Used', 'Comment'])
+
+
 class SpliceIntervalRow:
     def __init__(self, site, hole, core, coreType, topSection, topOffset, topMBSF, topMCD, botSection, botOffset, botMBSF, botMCD, spliceType, dataUsed, comment):
         self.site = site
@@ -40,7 +55,7 @@ class SpliceIntervalTable:
     @classmethod
     def createWithFile(cls, filepath):
         dataframe = ti.readFile(filepath)
-        ti.forceStringDatatype(ti.SITFormat.strCols, dataframe)
+        ti.forceStringDatatype(SITFormat.strCols, dataframe)
         return cls(os.path.basename(filepath), dataframe)
     
     def getIntervals(self):
