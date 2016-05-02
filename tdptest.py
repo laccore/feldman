@@ -8,9 +8,10 @@ gun trying to get Towuti its data...
 import logging as log
 
 import pandas
+
 import tabularImport as ti
-import spliceInterval as si
-import measurement as meas
+import data.spliceInterval as si
+import data.measurement as meas
 import sample
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
@@ -243,23 +244,23 @@ def exportSampleData(sitPath, sdPathTemplate, holes, exportPath):
     ti.writeToFile(exportdf, exportPath)
 
 
-def exportMeasurementData():
+def exportMeasurementData(sitPath, measDataTemplate, holes, exportPath):
     log.info("--- Exporting Measurement Data ---")
     
-    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
+    #sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
 
     # load measurement data from each hole in site 1
-    mdHoles = ["A", "B", "D", "E", "F"]
+    mdHoles = holes #["A", "B", "D", "E", "F"]
     mdFiles = {}
     for hole in mdHoles:
         #mdpath = "testdata/TDP-5055-1{}-gamma.csv".format(hole)
         #md = meas.MeasurementData.createWithFile(hole, "Natural Gamma", mdpath)
 #         mdpath = "/Users/bgrivna/Desktop/TDP Towuti/TDP_MS/TDP-5055-1{}-MS.csv".format(hole)
 #         md = meas.MeasurementData.createWithFile(hole, "Magnetic Susceptibility", mdpath)
-        mdpath = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Gamma/TDP-5055-1{}-gamma.csv".format(hole)
+        #mdpath = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Gamma/TDP-5055-1{}-gamma.csv".format(hole)
+        mdpath = measDataTemplate.format(hole)
         md = meas.MeasurementData.createWithFile(hole, "Gamma Density", mdpath)
-
 
         log.info("Loading measurement data file {}".format(mdpath))
         mdFiles[hole] = md
@@ -267,7 +268,7 @@ def exportMeasurementData():
     sprows = [] # rows comprising spliced dataset
     rowcount = 0
     for index, sirow in enumerate(sit.getIntervals()):
-        print "Interval {}: {}".format(index, sirow)
+        log.debug("Interval {}: {}".format(index, sirow))
         md = mdFiles[sirow.hole]
         mdrows = md.getByRangeAndCore(sirow.topMBSF, sirow.botMBSF, sirow.core)
         #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdRows), mdRows.iloc[0]['Depth'], mdRows.iloc[-1]['Depth'])
@@ -287,7 +288,8 @@ def exportMeasurementData():
     log.info("Total rows: {}".format(rowcount))
     
     exportdf = pandas.concat(sprows)
-    ti.writeToFile(exportdf, "TDP_Site1_Gamma_export_CoreCheck_04132016.csv")
+    #ti.writeToFile(exportdf, "TDP_Site1_Gamma_export_CoreCheck_04132016.csv")
+    ti.writeToFile(exportdf, exportPath)
 
 class ManualCorrelationTable:
     def __init__(self, name, dataframe):
@@ -391,6 +393,13 @@ def exportOffSpliceAffines(sitPath, ssPath, manualCorrelationPath, exportPath):
     affDF = pandas.DataFrame(affineRows, columns=["Core ID", "Offset"])
     log.info("writing off-splice affine table to {}".format(exportPath))
     affDF.to_csv(exportPath, index=False)
+    
+def doMeasurementExport():
+    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
+    measDataTemplate = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-1{}-samples.csv"
+    measDataHoles = ["A", "B", "D", "E", "F"]
+    exportPath = "/Users/bgrivna/TDP_Site2_MeasurementData.csv"
+    exportMeasurementData(sitPath, measDataTemplate, measDataHoles, exportPath)
 
 def doSampleExport():
     sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
