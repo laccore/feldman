@@ -9,6 +9,7 @@ import logging as log
 
 import pandas
 
+import coreIdentity as ci
 import tabularImport as ti
 import data.spliceInterval as si
 import data.measurement as meas
@@ -245,6 +246,7 @@ def exportSampleData(sitPath, sdPathTemplate, holes, exportPath):
     ti.writeToFile(exportdf, exportPath)
 
 
+# todo: MeasDataDB class that hides multi-file (broken into holes) vs single-file data
 def exportMeasurementData(sitPath, measDataTemplate, holes, exportPath):
     log.info("--- Exporting Measurement Data ---")
     
@@ -318,42 +320,44 @@ class OffSpliceCore:
 
 
 
-def exportOffSpliceAffines(sitPath, ssPath, manualCorrelationPath, exportPath):
-    # load files
-    sit = si.SpliceIntervalTable.createWithFile(sitPath)
-    secsumm = openSectionSummaryFile(ssPath)
-    mancorr = openManualCorrelationFile(manualCorrelationPath)
-
+def exportOffSpliceAffines(sit, secsumm, mancorr, exportPath, site):
     # find all off-splice cores: those in section summary that are *not* in SIT
+    skippedCoreCount = 0
     offSpliceCores = []
     onSpliceCores = []
     ssCores = secsumm.getCores()
     for index, row in ssCores.iterrows():
+        if row.Site != site: # skip section summary rows from non-site cores
+            skippedCoreCount += 1
+            continue
         if not sit.containsCore(row.Site, row.Hole, row.Core):
             offSpliceCores.append(row)
         else:
             onSpliceCores.append(row)
             
-    log.info("Found {} off-splice cores in {} section summary cores".format(len(offSpliceCores), len(ssCores)))
-#     for row in offSpliceCores:
-#         print "{}{}-{}{}-{}".format(row.Site, row.Hole, row.Core, row.CoreType, row.Section)
+    log.info("Found {} off-splice cores in {} section summary cores for site {} - skipped {} non-site cores".format(len(offSpliceCores), len(ssCores), site, skippedCoreCount))
 
     osAffineShifts = {}
     
     # for each of the off-splice cores:
     for osc in offSpliceCores:
         oscid = "{}{}-{}{}".format(osc.Site, osc.Hole, osc.Core, osc.CoreType)
-        mcc = mancorr.getOffSpliceCore(osc.Site, osc.Hole, osc.Core)
-        if mcc is not None:
-            log.debug("Found manual correlation for {}".format(OffSpliceCore(osc)))
-        else:
-            log.debug("no match for {}".format(OffSpliceCore(osc)))
+        #oscid = ci.CoreIdentity(osc.Site, osc.Hole, osc.Core, osc.CoreType)
+        
+        mcc = None
+        if mancorr is not None:
+            mcc = mancorr.getOffSpliceCore(osc.Site, osc.Hole, osc.Core)
+            if mcc is not None:
+                log.debug("Found manual correlation for {}".format(OffSpliceCore(osc)))
+            else:
+                log.debug("no manual correlation for {}".format(OffSpliceCore(osc)))
             
-        # if that core is in Jim's correlations:
+        # is that core manually correlated?
         if mcc is not None:
             # if the on-splice "correlation core" is actually on-splice:
             if sit.containsCore(mcc.Site2, mcc.Hole2, mcc.Core2):
-                #print "   SIT contains core, yay"
+                log.debug("SIT contains on-splice core")
+
                 # use sparse splice to SIT logic to determine affine for that core based on alignment of section depths
                 offSpliceMbsf = getOffsetDepth(secsumm, mcc.Site1, mcc.Hole1, mcc.Core1, mcc.Section1, mcc.SectionDepth1)
                 log.debug("off-splice: {}@{} = {} MBSF".format(oscid, mcc.SectionDepth1, offSpliceMbsf))
@@ -410,11 +414,11 @@ def doSampleExport():
     exportSampleData(sitPath, sampleDataTemplate, holes, sampleExportPath)
     
 def doOffSpliceAffineExport():
-    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDP_Site1_SIT_cols.csv"
-    ssPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 1 Splice Export/TDPSecSumm_Site1_Only.csv"
-    manCorrPath = "/Users/bgrivna/Desktop/JimOffSpliceCorrelations.csv"
-    exportPath = "/Users/bgrivna/Desktop/offSpliceAffineExport.csv"
-    exportOffSpliceAffines(sitPath, ssPath, manCorrPath, exportPath)
+    sit = si.SpliceIntervalTable.createWithFile("/Users/bgrivna/Desktop/TDP Towuti/Site 2 Exportage/TDP_Site2_SITfromSparse.csv")
+    secsumm = openSectionSummaryFile("/Users/bgrivna/Desktop/TDP section summary.csv")
+    mancorr = None #openManualCorrelationFile("/Users/bgrivna/Desktop/JimOffSpliceCorrelations.csv")
+    exportPath = "/Users/bgrivna/Desktop/TDP_Site2_offSpliceAffine.csv"
+    exportOffSpliceAffines(sit, secsumm, mancorr, exportPath, site="2")
     
 def doSparseSpliceToSITExport():
     log.info("--- Converting Sparse Splice to SIT ---")
@@ -425,8 +429,8 @@ def doSparseSpliceToSITExport():
 
 
 if __name__ == "__main__":
-    log.basicConfig(level=log.INFO)
+    log.basicConfig(level=log.DEBUG)
     
-    doSparseSpliceToSITExport()
-    #doOffSpliceAffineExport()
+    #doSparseSpliceToSITExport()
+    doOffSpliceAffineExport()
     #exportMeasurementData()
