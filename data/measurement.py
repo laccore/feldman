@@ -46,5 +46,9 @@ class MeasurementData:
     def getByRangeAndCore(self, mindepth, maxdepth, core):
         return self.df[(self.df.Depth >= mindepth) & (self.df.Depth <= maxdepth) & (self.df.Core == core)]
     
+    # sections: list of section IDs (type str) from which rows can be pulled
+    def getByRangeCoreSections(self, mindepth, maxdepth, core, sections):
+        return self.df[(self.df.Depth >= mindepth) & (self.df.Depth <= maxdepth) & (self.df.Core == core) & (self.df.Section.isin(sections))]
+    
     def getByCore(self, core):
         return self.df[self.df.Core == core]
