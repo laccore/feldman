@@ -32,7 +32,8 @@ class CoreIdentity:
     section = None
     half = None
     
-    def __init__(self, name, site, hole, core, coreType, section, half=None):
+    # default to empty section and half - in many cases we only need core-level identity (e.g. affines)
+    def __init__(self, name, site, hole, core, coreType, section=None, half=None):
         self.name = name
         self.site = site
         self.hole = hole
@@ -42,10 +43,21 @@ class CoreIdentity:
         self.half = half
         
     def __repr__(self):
-        rep = "Name: {}\nSite: {}\nHole: {}\nCore: {}\nCoreType: {}\nSection: {}".format(self.name, self.site, self.hole, self.core, self.coreType, self.section)
+        rep = ""
+        if self.name is not None:
+            rep += self.name + "-"
+        rep += "{}{}-{}{}".format(self.site, self.hole, self.core, self.coreType)
+        if self.section is not None:
+            rep += "-{}".format(self.section)
         if self.half is not None:
-            rep += "\nHalf: {}".format(self.half)
+            rep += "-{}".format(self.half)
         return rep
+        
+#     def __repr__(self):
+#         rep = "Name: {}\nSite: {}\nHole: {}\nCore: {}\nCoreType: {}\nSection: {}".format(self.name, self.site, self.hole, self.core, self.coreType, self.section)
+#         if self.half is not None:
+#             rep += "\nHalf: {}".format(self.half)
+#         return rep
     
 def parseIdentity(idstr):
     tokens = idstr.split('-')

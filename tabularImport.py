@@ -7,10 +7,7 @@ import os
 import numpy
 import pandas
     
-class AffineTable:
-    def __init__(self, name, dataframe):
-        self.name = name
-        self.dataframe = dataframe
+
 
 """ bridge between imported tabular columns and destination format """ 
 class TabularFormat:
@@ -24,12 +21,6 @@ class TabularFormat:
 SampleFormat = TabularFormat("Sample Data",
                              ['Exp', 'Site', 'Hole', 'Core', 'Tool', 'Section', 'SectionDepth', 'Depth', 'Data'],
                              ['Exp', 'Site', 'Hole', 'Core', 'Tool', 'Section'])
-
-AffineFormat = TabularFormat("Affine Table",
-                             ['Site', 'Hole', 'Core', 'Core Type', 'Depth CSF (m)', 'Depth CCSF (m)', \
-                              'Cumulative Offset (m)', 'Differential Offset (m)', 'Growth Rate', 'Shift Type', \
-                              'Data Used', 'Quality Comment'],
-                             ['Site', 'Hole', 'Core', 'Core Type', 'Shift Type', 'Data Used', 'Quality Comment'])
 
 
 # Format for exported core data...may not need RunNo, RawDepth or Offset any longer?
