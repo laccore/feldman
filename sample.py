@@ -35,6 +35,10 @@ class SampleData:
     def getByRangeAndCore(self, mindepth, maxdepth, core):
         return self.df[(self.df.Depth >= mindepth) & (self.df.Depth <= maxdepth) & (self.df.Core == core)]
     
+    # includes depths == mindepth or maxdepth - only pulls matching samples for the specified core!
+    def getByRangeFullID(self, mindepth, maxdepth, site, hole, core, sections):
+        return self.df[(self.df.Depth >= mindepth) & (self.df.Depth <= maxdepth) & (self.df.Site == site) & (self.df.Hole == hole) & (self.df.Core == core) & (self.df.Section.isin(sections))]
+    
     def getByCore(self, core):
         return self.df[self.df.Core == core]
     

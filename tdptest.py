@@ -169,53 +169,36 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
     
     return affineRows
     
-def exportSampleData(sitPath, sdPathTemplate, holes, exportPath):
+# todo: basically a dup of exportMeasurementData with some extra reporting
+def exportSampleData(sitPath, sdPath, exportPath): #Template, holes, exportPath):
     log.info("--- Exporting Sample Data --- ")
     # load SIT
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
 
-    # load sample data from each hole in site 1
-    sampleFiles = {}
-    totalSampleRows = 0
-    for hole in holes:
-        path = sdPathTemplate.format(hole)
-        
-        # TODO: NEED WAY TO DETECT AND COPE WITH BAD DATA ROWS, THEY FACK EVERYTHING UP
-        sd = sample.SampleData.createWithFile(hole, path)
-
-        log.info("Loading sample data file {}...loaded {} rows".format(path, sd.rowCount())),
-        totalSampleRows += sd.rowCount()
-        sampleFiles[hole] = sd
-
-    log.info("{} sample data rows loaded from {} files".format(totalSampleRows, len(holes)))
+    # load sample data
+    sd = sample.SampleData.createWithFile("Many Holes", sdPath)
+#     log.info("{} sample data rows loaded from {} files".format(totalSampleRows, len(holes)))
     log.info("Applying SIT to Sample Data...")
 
-    # TODO: one-liner to create map keyed on hole with empty lists for values?
-    expVals = {} # track exported rows from each hole for reporting purposes
-    for h in holes:
-        expVals[h] = []
-    
     sprows = [] # rows comprising spliced dataset
     rowcount = 0
     for index, sirow in enumerate(sit.getIntervals()):
         log.debug("Interval {}: {}".format(index, sirow))
         
-        if sirow.hole not in holes:
-            log.warning("   no sample file exists for hole {}, skipping".format(sirow.hole))
-            continue
+        sections = [sirow.topSection]
+        if sirow.topSection != sirow.botSection:
+            intTop = int(sirow.topSection)
+            intBot = int(sirow.botSection)
+            sections = [str(x + intTop) for x in range(1 + intBot - intTop)]
+        log.debug("   Searching section(s) {}...".format(sections))
         
-        sd = sampleFiles[sirow.hole]
-        sdrows = sd.getByRangeAndCore(sirow.topMBSF, sirow.botMBSF, sirow.core)
+        sdrows = sd.getByRangeFullID(sirow.topMBSF, sirow.botMBSF, sirow.site, sirow.hole, sirow.core, sections)        
         log.debug("   found {} rows".format(len(sdrows)))
         if len(sdrows) > 0:
             log.debug("...top depth = {}, bottom depth = {}".format(sdrows.iloc[0]['Depth'], sdrows.iloc[-1]['Depth']))
             log.debug(str(sdrows))
         else:
             log.error("Zero matching rows found in sample data")
-        
-        # track Data values for rows we're exporting in attempt to figure out what's missing
-        for t in sdrows.itertuples():
-            expVals[sirow.hole].append(t[9])
         
         affineOffset = sirow.topMCD - sirow.topMBSF
         
@@ -230,13 +213,7 @@ def exportSampleData(sitPath, sdPathTemplate, holes, exportPath):
         sprows.append(sdrows)
         
         rowcount += len(sdrows)
-        
-    for key, dlist in expVals.items():
-        fileTotal = sampleFiles[key].rowCount()
-        uniqueTotal = len(set(dlist))
-        expTotal = len(dlist)
-        log.info("Hole {}: {} ({} unique) of {} rows exported ({} not exported)".format(key, expTotal, uniqueTotal, fileTotal, fileTotal - expTotal))
-        
+                
     log.info("Total sample rows exported: {}".format(rowcount))
     
     exportdf = pandas.concat(sprows)
@@ -249,26 +226,17 @@ def exportSampleData(sitPath, sdPathTemplate, holes, exportPath):
 
 
 # todo: MeasDataDB class that hides multi-file (broken into holes) vs single-file data
-def exportMeasurementData(sitPath, measDataTemplate, holes, exportPath):
+#def exportMeasurementData(sitPath, measDataTemplate, holes, exportPath):
+def exportMeasurementData(sitPath, mdPath, exportPath):
     log.info("--- Exporting Measurement Data ---")
     
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
+    md = meas.MeasurementData.createWithFile("Multi-hole", "Gamma Density", mdPath)
 
-    # load measurement data from each hole in site 1
-    mdHoles = holes
-    mdFiles = {}
-    for hole in mdHoles:
-        mdpath = measDataTemplate.format(hole)
-        md = meas.MeasurementData.createWithFile(hole, "Gamma Density", mdpath)
-
-        log.info("Loading measurement data file {}".format(mdpath))
-        mdFiles[hole] = md
-        
     sprows = [] # rows comprising spliced dataset
     rowcount = 0
     for index, sirow in enumerate(sit.getIntervals()):
         log.debug("Interval {}: {}".format(index, sirow))
-        md = mdFiles[sirow.hole]
         
         sections = [sirow.topSection]
         if sirow.topSection != sirow.botSection:
@@ -277,7 +245,7 @@ def exportMeasurementData(sitPath, measDataTemplate, holes, exportPath):
             sections = [str(x + intTop) for x in range(1 + intBot - intTop)]
         log.debug("   Searching section(s) {}...".format(sections))
         
-        mdrows = md.getByRangeCoreSections(sirow.topMBSF, sirow.botMBSF, sirow.core, sections)
+        mdrows = md.getByRangeFullID(sirow.topMBSF, sirow.botMBSF, sirow.site, sirow.hole, sirow.core, sections)
         #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdRows), mdRows.iloc[0]['Depth'], mdRows.iloc[-1]['Depth'])
         
         affineOffset = sirow.topMCD - sirow.topMBSF
@@ -396,18 +364,19 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr, site):
     return affineRows
     
 def doMeasurementExport():
-    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 2 Exportage/TDP_Site2_SITfromSparse.csv"
-    measDataTemplate = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Gamma/TDP-5055-2{}-gamma.csv"
-    measDataHoles = ["A", "B", "C"]
-    exportPath = "/Users/bgrivna/Desktop/TDP_Site2_Spliced_Gamma.csv"
-    exportMeasurementData(sitPath, measDataTemplate, measDataHoles, exportPath)
+    sitPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/Site 1/PLJ_Site1_SITfromSparse.csv"
+    measDataPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/PLJ MSCL.csv"
+    #measDataHoles = ["A", "B"]
+    exportPath = "/Users/bgrivna/Desktop/PLJ_Site1_Spliced_Gamma.csv"
+    exportMeasurementData(sitPath, measDataPath, exportPath)
 
 def doSampleExport():
-    sitPath = "/Users/bgrivna/Desktop/TDP Towuti/Site 2 Exportage/TDP_Site2_SITfromSparse.csv"
-    sampleDataTemplate = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-2{}-samples.csv"
-    holes = ["A", "B"]
-    sampleExportPath = "/Users/bgrivna/Desktop/TDP_Site2_Spliced_Samples.csv"
-    exportSampleData(sitPath, sampleDataTemplate, holes, sampleExportPath)
+    sitPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/Site 1/PLJ_Site1_SITfromSparse.csv"
+    #sampleDataTemplate = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-3{}-samples.csv"
+    #holes = ["A"]
+    sdPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/PLJsubsamples.csv"
+    sampleExportPath = "/Users/bgrivna/Desktop/PLJ_Site1_Spliced_Samples.csv"
+    exportSampleData(sitPath, sdPath, sampleExportPath)#, holes, sampleExportPath)
     
 def doOffSpliceAffineExport():
     sit = si.SpliceIntervalTable.createWithFile("/Users/bgrivna/Desktop/TDP Towuti/Site 2 Exportage/TDP_Site2_SITfromSparse.csv")
