@@ -7,6 +7,7 @@ gun trying to get Towuti its data...
 
 import logging as log
 
+import numpy
 import pandas
 
 import coreIdentity as ci
@@ -362,6 +363,33 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr, site):
         affineRows.append(affineRow)
         
     return affineRows
+
+# sort affine rows, compute Differential Offset and Growth Rate column values
+def fillAffineRows(affineRows):
+    sortedRows = sorted(affineRows, key = lambda ar: (ar.site, ar.hole, int(ar.core)))
+    
+    holes = set([r.hole for r in sortedRows])
+    for h in holes:
+        rows = [r for r in sortedRows if r.hole == h]
+        mbsfVals = []
+        mcdVals = []
+        prevOffset = None
+        for row in rows:
+            if prevOffset is None: # first row
+                row.diffOffset = row.cumOffset
+            else:
+                row.diffOffset = row.cumOffset - prevOffset
+            prevOffset = row.cumOffset
+            
+            mbsfVals.append(row.csf)
+            mcdVals.append(row.ccsf)
+            if len(mbsfVals) > 1:
+                row.growthRate = round(numpy.polyfit(mbsfVals, mcdVals, 1)[0], 3)
+            else:
+                row.growthRate = 0.0
+    
+    return sortedRows
+    
     
 def doMeasurementExport():
     sitPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/Site 1/PLJ_Site1_SITfromSparse.csv"
@@ -401,6 +429,8 @@ def doSparseSpliceToSITExport():
     offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr, '2')
     
     allAff = onSpliceAffRows + offSpliceAffRows
+    allAff = fillAffineRows(allAff)
+    
     arDicts = [ar.asDict() for ar in allAff]
     
     affDF = pandas.DataFrame(arDicts, columns=aff.AffineFormat.req)
