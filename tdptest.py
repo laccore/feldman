@@ -135,7 +135,7 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
         holecore = str(hole) + str(core)
         if holecore not in seenCores:
             seenCores.append(str(hole) + str(core))
-            affineRow = aff.AffineRow(site, hole, core, row['Core Type'], shiftTop, shiftTop + affine, affine) 
+            affineRow = aff.AffineRow(site, hole, core, row['Core Type'], shiftTop, shiftTop + affine, affine, comment="splice") 
             affineRows.append(affineRow)
         else:
             log.error("holecore {} already seen, ignoring".format(holecore))
@@ -359,7 +359,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr, site):
             offSpliceMbsf = secsumm.getCoreTop(osc.Site, osc.Hole, osc.Core)
             osAffineShifts[oscid] = offset
             
-        affineRow = aff.AffineRow(osc.Site, osc.Hole, osc.Core, osc.CoreType, offSpliceMbsf, offSpliceMbsf + offset, offset)
+        affineRow = aff.AffineRow(osc.Site, osc.Hole, osc.Core, osc.CoreType, offSpliceMbsf, offSpliceMbsf + offset, offset, comment="off-splice")
         affineRows.append(affineRow)
         
     return affineRows
