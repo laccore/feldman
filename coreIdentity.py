@@ -9,7 +9,7 @@ Parsing of core naming formats e.g. LacCore, IODP
 import re
 
 # Only attempting LacCore format for now:
-# ex. GLAD7-MAL05-1B-32E-4
+# ex. GLAD7-MAL05-1B-32E-4-A
 # Expedition = GLAD7
 # Lake = MAL
 # Year = 05
@@ -18,6 +18,18 @@ import re
 # Core = 32
 # Core Type = E
 # Section = 4
+# Half (optional) = A
+
+# IODP format is very similar, main difference is absence of lake/year token and longer site (U + #)
+# ex. 327-U1363B-2H-5-A
+# Expedition = 327
+# Site = U1363
+# Hole = B
+# Core = 2
+# Core Type = H
+# Section = 5
+# Half (optional) = A
+
 
 # This isn't general enough to work for both LacCore and IODP due to LC's additional Lake/Year field.
 # However, Exp + optional Lake/Year field could be regarded as "top-level" identity, essentially a name
