@@ -32,7 +32,7 @@ def openSectionSummaryFile(filename):
     secsumm = ss.SectionSummary.createWithFile(filename)
     
     # force pandas.dtypes to "object" (string) for ID components
-    objcols = ["Exp", "Site", "Hole", "Core", "CoreType", "Section"]
+    objcols = ["Site", "Hole", "Core", "CoreType", "Section"]
     ti.forceStringDatatype(objcols, secsumm.dataframe)
     
     return secsumm
@@ -42,7 +42,7 @@ def openSectionSummaryFile(filename):
 def openSectionSplice(filename):
     headers = ["Site", "Hole", "Core", "Core Type", "Top Section", "Top Offset", "Bottom Section", "Bottom Offset", "Splice Type", "Comment"]
     datfile = open(filename, 'rU')
-    splice = pandas.read_csv(datfile, skiprows=1, header=None, names=headers, sep=None, engine='python', na_values="POOP")
+    splice = pandas.read_csv(datfile, skiprows=1, header=None, names=headers, sep=None, engine='python')
     datfile.close()
     
     objcols = ["Site", "Hole", "Core", "Core Type", "Top Section", "Bottom Section", "Splice Type", "Comment"]
@@ -79,6 +79,7 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, compress=True):
     drilledLength = secBot - secTop
     compFactor = 1.0
     if compress and curatedLength > drilledLength:
+        print "curated length = {}, drilled = {} compressing\n".format(curatedLength, drilledLength)
         compFactor = drilledLength / curatedLength
         
     return secTop + (offset/100.0 * compFactor)
@@ -104,11 +105,11 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
         core = row['Core']
         top = row['Top Section']
         topOff = row['Top Offset']
-        shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff, compress=True)
+        shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff, compress=False)
         
         bot = row['Bottom Section']
         botOff = row['Bottom Offset']
-        shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff, compress=True)
+        shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff, compress=False)
         
         affine = 0.0
         if sptype is None: # first interval
@@ -233,6 +234,8 @@ def exportMeasurementData(sitPath, mdPath, exportPath):
     
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
     md = meas.MeasurementData.createWithFile("Multi-hole", "Gamma Density", mdPath)
+    
+    print md.df.dtypes
 
     sprows = [] # rows comprising spliced dataset
     rowcount = 0
@@ -247,19 +250,19 @@ def exportMeasurementData(sitPath, mdPath, exportPath):
         log.debug("   Searching section(s) {}...".format(sections))
         
         mdrows = md.getByRangeFullID(sirow.topMBSF, sirow.botMBSF, sirow.site, sirow.hole, sirow.core, sections)
-        #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdRows), mdRows.iloc[0]['Depth'], mdRows.iloc[-1]['Depth'])
+        #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdrows), mdrows.iloc[0]['Depth'], mdrows.iloc[-1]['Depth'])
         
-        affineOffset = sirow.topMCD - sirow.topMBSF
-        
-        # adjust depth column
-        mdrows.rename(columns={'Depth':'RawDepth'}, inplace=True)
-        mdrows.insert(8, 'Depth', pandas.Series(mdrows['RawDepth'] + affineOffset))
-        mdrows.insert(9, 'Offset', affineOffset)
-        mdrows = mdrows[meas.MeasurementExportFormat.req] # reorder to reflect export format
-        
-        sprows.append(mdrows)
-        
-        rowcount += len(mdrows)
+        if len(mdrows) > 0:
+            affineOffset = sirow.topMCD - sirow.topMBSF
+            
+            # adjust depth column
+            mdrows.rename(columns={'Depth':'RawDepth'}, inplace=True)
+            mdrows.insert(8, 'Depth', pandas.Series(mdrows['RawDepth'] + affineOffset))
+            mdrows.insert(9, 'Offset', affineOffset)
+            
+            sprows.append(mdrows)
+            
+            rowcount += len(mdrows)
         
     log.info("Total rows: {}".format(rowcount))
     
@@ -392,10 +395,10 @@ def fillAffineRows(affineRows):
     
     
 def doMeasurementExport():
-    sitPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/Site 1/PLJ_Site1_SITfromSparse.csv"
-    measDataPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/PLJ MSCL.csv"
+    sitPath = "/Users/bgrivna/Desktop/MEXI/MEXI_SITfromSparse_20160916.csv"
+    measDataPath = "/Users/bgrivna/Desktop/MEXI/MEXI_MSCL.csv"
     #measDataHoles = ["A", "B"]
-    exportPath = "/Users/bgrivna/Desktop/PLJ_Site1_Spliced_Gamma.csv"
+    exportPath = "/Users/bgrivna/Desktop/MEXI_MSCL_spliced_20160916.csv"
     exportMeasurementData(sitPath, measDataPath, exportPath)
 
 def doSampleExport():
@@ -416,17 +419,17 @@ def doOffSpliceAffineExport():
     
 def doSparseSpliceToSITExport():
     log.info("--- Converting Sparse Splice to SIT ---")
-    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/TDP section summary.csv")
-    sp = openSectionSplice("/Users/bgrivna/Desktop/TDP Towuti/Site 2 Exportage/TDP_Site2_SparseSplice.csv")
+    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/MEXI/MEXI_SectionSummary.csv")
+    sp = openSectionSplice("/Users/bgrivna/Desktop/MEXI/MEXI_SparseSpliceTable_revisions20160916.csv")
     basepath = "/Users/bgrivna/Desktop/"
-    affPath = basepath + "TDP_Site2_AffineFromSparse.csv"
-    sitPath = basepath + "TDP_Site2_SITfromSparse.csv"
+    affPath = basepath + "MEXI_AffineFromSparse_20160916.csv"
+    sitPath = basepath + "MEXI_SITfromSparse_20160916.csv"
     onSpliceAffRows = convertSectionSpliceToSIT(sp, ss, affPath, sitPath)
     
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
-    mancorr = None #openManualCorrelationFile("/Users/bgrivna/Desktop/JimOffSpliceCorrelations.csv")
-    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr, '2')
+    mancorr = None #openManualCorrelationFile("/Users/bgrivna/Desktop/TDP Towuti/Site 1/JimOffSpliceCorrelations.csv")
+    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr, '1')
     
     allAff = onSpliceAffRows + offSpliceAffRows
     allAff = fillAffineRows(allAff)
@@ -441,7 +444,7 @@ def doSparseSpliceToSITExport():
 if __name__ == "__main__":
     log.basicConfig(level=log.DEBUG)
     
-    doSparseSpliceToSITExport()
+    #doSparseSpliceToSITExport()
     #doOffSpliceAffineExport()
-    #doMeasurementExport()
+    doMeasurementExport()
     #doSampleExport()
