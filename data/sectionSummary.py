@@ -10,9 +10,10 @@ import tabularImport as ti
 
 import pandas
 
+
 SectionSummaryFormat = ti.TabularFormat("Section Summary", 
-                                         ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopDepth', 'BottomDepth', 'CuratedLength'],
-                                         ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
+                                         ['Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopDepth', 'BottomDepth', 'CuratedLength'],
+                                         ['Site', 'Hole', 'Core', 'CoreType', 'Section'])
 
 
 class SectionSummary:

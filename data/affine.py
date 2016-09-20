@@ -10,10 +10,10 @@ import tabularImport as ti
 
 
 AffineFormat = ti.TabularFormat("Affine Table",
-                             ['Site', 'Hole', 'Core', 'Core Type', 'Depth CSF (m)', 'Depth CCSF (m)', \
-                              'Cumulative Offset (m)', 'Differential Offset (m)', 'Growth Rate', 'Shift Type', \
+                             ['Site', 'Hole', 'Core', 'CoreType', 'Depth CSF (m)', 'Depth CCSF (m)', \
+                              'Offset', 'Differential Offset (m)', 'Growth Rate', 'Shift Type', \
                               'Data Used', 'Quality Comment'],
-                             ['Site', 'Hole', 'Core', 'Core Type', 'Shift Type', 'Data Used', 'Quality Comment'])
+                             ['Site', 'Hole', 'Core', 'CoreType', 'Shift Type', 'Data Used', 'Quality Comment'])
 
 class AffineTable:
     def __init__(self, name, dataframe):
@@ -23,8 +23,27 @@ class AffineTable:
     @classmethod
     def createWithFile(cls, filepath):
         dataframe = ti.readFile(filepath)
-        ti.forceStringDatatype(ti.SampleFormat.strCols, dataframe)
+        ti.forceStringDatatype(ti.TabularFormat.strCols, dataframe)
         return cls(os.path.basename(filepath), dataframe)
+    
+    def getOffset(self, site, hole, core, coreType):
+        df = self.dataframe
+        cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.CoreType == coreType)]
+        if cores.empty:
+            print "AffineTable: Could not find core {}{}-{}{}".format(site, hole, core, coreType)
+        elif len(cores) > 1:
+            print "AffineTable: Found multiple matches for core {}{}-{}{}".format(site, hole, core, coreType)
+        return cores.iloc[0]['Offset']
+    
+    def allRows(self):
+        allrows = []
+        for index, row in self.dataframe.iterrows():
+            ar = AffineRow.createWithRow(row)
+            allrows.append(ar)
+        #allrows = [AffineRow.createWithRow(row) for index, row in self.dataframe.iterrows()]
+        return allrows
+        #for index, row in self.dataframe.iterrows():
+            
 
 class AffineRow:
     def __init__(self, site, hole, core, coreType, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', dataUsed='', comment=''):
@@ -41,7 +60,17 @@ class AffineRow:
         self.dataUsed = dataUsed
         self.comment = comment
         
+    @classmethod
+    # INCOMPLETE AffineRows created here...
+    def createWithRow(cls, row):
+#         if len(row) != 1:
+#             raise Exception("AffineRow can only be created from a single Pandas row, row count = {}".format(len(row)))
+        return cls(str(row['Site']), row['Hole'], str(row['Core']), row['CoreType'], row['Depth CSF (m)'], row["Depth CCSF (m)"], row['Offset'])
+        
     def asDict(self):
-        return {'Site':self.site, 'Hole':self.hole, 'Core':self.core, 'Core Type':self.coreType, 'Depth CSF (m)':self.csf,
-                'Depth CCSF (m)':self.ccsf, 'Cumulative Offset (m)':self.cumOffset, 'Differential Offset (m)':self.diffOffset,
+        return {'Site':self.site, 'Hole':self.hole, 'Core':self.core, 'CoreType':self.coreType, 'Depth CSF (m)':self.csf,
+                'Depth CCSF (m)':self.ccsf, 'Offset':self.cumOffset, 'Differential Offset (m)':self.diffOffset,
                 'Growth Rate':self.growthRate, 'Shift Type':self.shiftType, 'Data Used':self.dataUsed, 'Quality Comment':self.comment}
+        
+    def __repr__(self):
+        return "{}{}-{}{} CSF = {}, CCSF = {}, Offset = {}".format(self.site, self.hole, self.core, self.coreType, self.csf, self.ccsf, self.cumOffset)
