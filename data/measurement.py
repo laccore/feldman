@@ -17,8 +17,8 @@ class AffineTransform:
         self.offset = offset
 
 MeasurementFormat = ti.TabularFormat("Measurement Data",
-                                     ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data'],
-                                     ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
+                                     ['Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data'],
+                                     ['Site', 'Hole', 'Core', 'CoreType', 'Section'])
 
 MeasurementExportFormat = ti.TabularFormat("Spliced Measurement Data",
                                              ['Exp', 'Site', 'Hole', 'Core', 'CoreType',
