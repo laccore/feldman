@@ -6,6 +6,7 @@ gun trying to get Towuti its data...
 '''
 
 import logging as log
+import os.path
 
 import numpy
 import pandas
@@ -40,7 +41,7 @@ def openSectionSummaryFile(filename):
 
 
 def openSectionSplice(filename):
-    headers = ["Site", "Hole", "Core", "Core Type", "Top Section", "Top Offset", "Bottom Section", "Bottom Offset", "Splice Type", "Comment"]
+    headers = ["Site", "Hole", "Core", "Core Type", "Top Section", "Top Offset", "Bottom Section", "Bottom Offset", "Splice Type", "Comment", "Gap (m)"]
     datfile = open(filename, 'rU')
     splice = pandas.read_csv(datfile, skiprows=1, header=None, names=headers, sep=None, engine='python')
     datfile.close()
@@ -48,6 +49,8 @@ def openSectionSplice(filename):
     objcols = ["Site", "Hole", "Core", "Core Type", "Top Section", "Bottom Section", "Splice Type", "Comment"]
     
     ti.forceStringDatatype(objcols, splice)
+    
+    log.debug("Section Splice pandas datatypes: {}".format(splice.dtypes))
     
     return splice
 
@@ -65,24 +68,28 @@ def openManualCorrelationFile(mcPath):
     
 
 # get total depth of a section offset using SectionSummary data and curated lengths if available
-def getOffsetDepth(secsumm, site, hole, core, section, offset, compress=True):
-    secTop = secsumm.getSectionTop(site, hole, core, section)
-    secBot = secsumm.getSectionBot(site, hole, core, section)
-    log.debug("   section: {}-{}{}-{}, top = {}m, bot = {}m".format(site, hole, core, section, secTop, secBot))
-    log.debug("   section offset = {}cm + {}m = {}m".format(offset, secTop, secBot + offset/100.0))
+def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False):
+    secTop = secsumm.getSectionTop(site, hole, core, section) if not scaledDepth else secsumm.getScaledSectionTop(site, hole, core, section) 
+    secBot = secsumm.getSectionBot(site, hole, core, section) if not scaledDepth else secsumm.getScaledSectionBot(site, hole, core, section)
+    scaledTxt = "scaled " if scaledDepth else ""
+    log.debug("   {}section: {}-{}{}-{}, top = {}m, bot = {}m".format(scaledTxt, site, hole, core, section, secTop, secBot))
+    log.debug("   {}section offset = {}cm + {}m = {}m".format(scaledTxt, offset, secTop, secTop + offset/100.0))
 
     curatedLength = secsumm.getSectionLength(site, hole, core, section)
     if offset/100.0 > curatedLength:
-        log.warning("top offset {}cm is beyond curated length of section {}m".format(offset, curatedLength))
+        log.warning("   offset {}cm is beyond curated length of section {}m".format(offset, curatedLength))
+
+    depth = secTop + (offset/100.0)
         
-    # if compress=True, compress depth to drilled interval
-    drilledLength = secBot - secTop
-    compFactor = 1.0
-    if compress and curatedLength > drilledLength:
-        print "curated length = {}, drilled = {} compressing\n".format(curatedLength, drilledLength)
-        compFactor = drilledLength / curatedLength
+    # if using scaled depths, compress depth to drilled interval
+    drilledLength = (secBot - secTop) * 100.0 # cm
+    if scaledDepth and curatedLength > drilledLength:
+        compressionFactor = drilledLength / curatedLength
+        compressedDepth = secTop + (offset/100.0 * compressionFactor)
+        log.warning("   curated length {}cm exceeds drilled length {}cm, compressing depth {}m to {}m".format(curatedLength, drilledLength, depth, compressedDepth))
+        depth = compressedDepth
         
-    return secTop + (offset/100.0 * compFactor)
+    return depth
 
     
 def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
@@ -95,7 +102,9 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
     botCCSFs = []
     prevAffine = 0.0 # previous affine shift (used for APPEND shift)
     prevBotMcd = None
+    prevRow = None # previous interval's row, data needed for inter-hole default APPEND gap method
     sptype = None
+    gap = None
     
     # todo: create SpliceIntervalRows and return along with AffineRows
     for index, row in secsplice.iterrows():
@@ -105,20 +114,36 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
         core = row['Core']
         top = row['Top Section']
         topOff = row['Top Offset']
-        shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff, compress=False)
+        log.debug("top section = {}, top offset = {}".format(top, topOff))
+        shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff)
         
         bot = row['Bottom Section']
         botOff = row['Bottom Offset']
-        shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff, compress=False)
+        log.debug("bottom section = {}, bottom offset = {}".format(bot, botOff))
+        shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff)
         
         affine = 0.0
         if sptype is None: # first interval
             affine = 0.0
             log.debug("First interval, no splice tie type")
         elif sptype == "APPEND":
-            # affine = distance between bottom of previous interval and top of current in MBLF space
-            affine = prevAffine
-            log.debug("APPENDing {} at depth {} based on previous affine {}".format(shiftTop, shiftTop + affine, affine))
+            if gap is not None: # user-specified gap
+                gapEndDepth = prevBotMcd + gap 
+                affine = gapEndDepth - shiftTop
+                log.debug("User specified gap of {}m between previous bottom ({}m) and current top ({}m), affine = {}m".format(gap, prevBotMcd, shiftTop, affine))
+            else: # default gap
+                assert prevRow is not None
+                if hole == prevRow['Hole']: # hole hasn't changed, use same affine shift
+                    affine = prevAffine
+                    log.debug("APPENDing {} at depth {} based on previous affine {}".format(shiftTop, shiftTop + affine, affine))
+                else: # different hole, use scaled depths to determine gap
+                    prevBotScaledDepth = getOffsetDepth(secsumm, prevRow['Site'], prevRow['Hole'], prevRow['Core'], prevRow['Bottom Section'], prevRow['Bottom Offset'], scaledDepth=True)
+                    topScaledDepth = getOffsetDepth(secsumm, site, hole, core, top, topOff, scaledDepth=True)
+                    scaledGap = topScaledDepth - prevBotScaledDepth
+                    if scaledGap < 0.0:
+                        log.warning("Bottom of previous interval is {}m *above* top of next interval in CSF-B space, is this okay?".format(scaledGap))
+                    affine = (prevBotMcd - shiftTop) + scaledGap
+                    log.debug("Inter-hole APPENDing {} at depth {} to preserve scaled (CSF-B) gap of {}m".format(shiftTop, shiftTop + affine, scaledGap))
         else: # TIE
             # affine = difference between prev bottom MCD and MBLF of current top
             affine = prevBotMcd - shiftTop
@@ -147,15 +172,19 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
         
         botCSFs.append(shiftBot)
         botCCSFs.append(shiftBot + affine)
+        log.debug("shifted top = {}m, bottom = {}m".format(shiftTop + affine, shiftBot + affine))
         
         prevBotMcd = shiftBot + affine
         prevAffine = affine
+        prevRow = row
         
         # warnings
         if shiftTop >= shiftBot:
             log.warning("interval top {} at or below interval bottom {} in MBLF".format(shiftTop, shiftBot))
         
+        # track splice type and (optional) gap, used to determine the next interval's depths
         sptype = row['Splice Type']
+        gap = row['Gap (m)'] if not numpy.isnan(row['Gap (m)']) else None
     
     # done parsing, create final dataframe for export
     sitDF = secsplice.copy()
@@ -431,12 +460,17 @@ def fillAffineRows(affineRows):
     
     
 def doMeasurementExport():
-    affinePath = "/Users/bgrivna/Desktop/MEXI/MEXI_AffineFromSparse_20160916.csv"
-    sitPath = "/Users/bgrivna/Desktop/MEXI/MEXI_SITfromSparse_20160916.csv"
-    measDataPath = "/Users/bgrivna/Desktop/MEXI/MEXI_subsamples.csv"
-    #measDataHoles = ["A", "B"]
-    exportPath = "/Users/bgrivna/Desktop/MEXI_subsamples_spliced_20160916.csv"
-    exportMeasurementData(affinePath, sitPath, measDataPath, exportPath)
+    affinePath = "/Users/bgrivna/Desktop/CHB_AffineFromSparse_20161201.csv"
+    sitPath = "/Users/bgrivna/Desktop/CHB_SITfromSparse_20161201.csv"
+    
+    mdFilePaths = ["/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_MSCL_MBS.csv",
+                   "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_XRF_MBS.csv",
+                    "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_XYZ_MBS.csv",
+                    "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_Subsamples_MBS.csv"]
+    for mdPath in mdFilePaths:
+        path, ext = os.path.splitext(mdPath)
+        exportPath = path + "_spliced" + ext
+        exportMeasurementData(affinePath, sitPath, mdPath, exportPath)
 
 def doSampleExport():
     sitPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/Site 1/PLJ_Site1_SITfromSparse.csv"

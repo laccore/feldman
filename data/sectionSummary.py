@@ -71,6 +71,14 @@ class SectionSummary:
         val = self._getSectionValue(site, hole, core, section, 'BottomDepth')
         return round(val, 3)
     
+    def getScaledSectionTop(self, site, hole, core, section):
+        val = self._getSectionValue(site, hole, core, section, 'TopDepthScaled')
+        return round(val, 3)
+
+    def getScaledSectionBot(self, site, hole, core, section):
+        val = self._getSectionValue(site, hole, core, section, 'BottomDepthScaled')
+        return round(val, 3)
+        
     def getSectionLength(self, site, hole, core, section):
         val = self._getSectionValue(site, hole, core, section, 'CuratedLength')
         return round(val, 3)
