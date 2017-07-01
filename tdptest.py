@@ -5,6 +5,7 @@ need to be generalized and modularized in an intelligent way, but for now we're 
 gun trying to get Towuti its data...
 '''
 
+from datetime import date
 import logging as log
 import os.path
 
@@ -17,6 +18,7 @@ import data.affine as aff
 import data.spliceInterval as si
 import data.measurement as meas
 import data.sectionSummary as ss
+import data.sparseSplice as ssplice
 import sample
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
@@ -40,19 +42,13 @@ def openSectionSummaryFile(filename):
     # confirm no blank/nan cells - fail to load? ignore such rows and warn user?
 
 
-def openSectionSplice(filename):
-    headers = ["Site", "Hole", "Core", "Core Type", "Top Section", "Top Offset", "Bottom Section", "Bottom Offset", "Splice Type", "Comment", "Gap (m)"]
-    datfile = open(filename, 'rU')
-    splice = pandas.read_csv(datfile, skiprows=1, header=None, names=headers, sep=None, engine='python')
-    datfile.close()
+def openSparseSplice(filename):
+    splice = ssplice.SparseSplice.createWithFile(filename)
     
-    objcols = ["Site", "Hole", "Core", "Core Type", "Top Section", "Bottom Section", "Splice Type", "Comment"]
+    log.debug("Sparse Splice pandas datatypes: {}".format(splice.dataframe.dtypes))
+    log.debug("string columns: {}", ssplice.SparseSpliceFormat.strCols)
     
-    ti.forceStringDatatype(objcols, splice)
-    
-    log.debug("Section Splice pandas datatypes: {}".format(splice.dtypes))
-    
-    return splice
+    return splice.dataframe
 
 def openManualCorrelationFile(mcPath):
     headers = ["Site1", "Hole1", "Core1", "Tool1", "Section1", "SectionDepth1", "Site2", "Hole2", "Core2", "Tool2", "Section2", "SectionDepth2"]
@@ -192,7 +188,6 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
     sitDF.insert(7, 'Top Depth CCSF-A', pandas.Series(topCCSFs))
     sitDF.insert(10, 'Bottom Depth CSF-A', pandas.Series(botCSFs))
     sitDF.insert(11, 'Bottom Depth CCSF-A', pandas.Series(botCCSFs))
-    sitDF.insert(13, 'Data Used', "")
     
     log.info("writing splice interval table to {}".format(sitOutPath))
     log.debug("splice interval table column types:{}".format(sitDF.dtypes))
@@ -280,6 +275,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         log.debug("   Searching section(s) {}...".format(sections))
         
         mdrows = md.getByRangeFullID(sirow.topMBSF, sirow.botMBSF, sirow.site, sirow.hole, sirow.core, sections)
+        #print mdrows
         #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdrows), mdrows.iloc[0]['Depth'], mdrows.iloc[-1]['Depth'])
         
         if len(mdrows) > 0:
@@ -311,7 +307,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         # matching rows, and setting their offsets should be faster than iterating
         # over all rows in offSpliceRows and finding/setting the affine of each?
         for ar in affine.allRows():
-            shiftedRows = osr[(osr.Site == ar.site) & (osr.Hole == ar.hole) & (osr.Core == ar.core) & (osr.CoreType == ar.coreType)]
+            shiftedRows = osr[(osr.Site == ar.site) & (osr.Hole == ar.hole) & (osr.Core == ar.core)]# & (osr.CoreType == ar.coreType)]
             log.info("   found {} off-splice rows for affine row {}".format(len(shiftedRows.index), ar))
             
             shiftedRows.rename(columns={'Depth':'RawDepth'}, inplace=True)
@@ -487,7 +483,10 @@ def doOffSpliceAffineExport():
     exportPath = "/Users/bgrivna/Desktop/TDP_Site2_offSpliceAffine.csv"
     affineRows = gatherOffSpliceAffines(sit, secsumm, mancorr, exportPath, site="2")
     # write affineRows to file...
-    
+
+def appendDate(text):
+    return text + "_{}".format(date.today().isoformat())
+
 def doSparseSpliceToSITExport():
     log.info("--- Converting Sparse Splice to SIT ---")
     ss = openSectionSummaryFile("/Users/bgrivna/Desktop/MEXI/MEXI_SectionSummary.csv")
