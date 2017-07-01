@@ -456,13 +456,18 @@ def fillAffineRows(affineRows):
     
     
 def doMeasurementExport():
-    affinePath = "/Users/bgrivna/Desktop/CHB_AffineFromSparse_20161201.csv"
-    sitPath = "/Users/bgrivna/Desktop/CHB_SITfromSparse_20161201.csv"
-    
-    mdFilePaths = ["/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_MSCL_MBS.csv",
-                   "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_XRF_MBS.csv",
-                    "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_XYZ_MBS.csv",
-                    "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_Subsamples_MBS.csv"]
+    affinePath = "/Users/bgrivna/Desktop/LacCore/CHB/CHB_AffineFromSparse.csv"
+    sitPath = "/Users/bgrivna/Desktop/LacCore/CHB/CHB_SITFromSparse.csv"
+        
+    mdFilePaths = ["/Users/bgrivna/Desktop/LacCore/CHB/HSPDP_CHB_SRF_20170609.csv"]#,
+#                   "/Users/bgrivna/Desktop/CHB May 2017/CHB_XYZ_20170518.csv",
+#                   "/Users/bgrivna/Desktop/CHB May 2017/CHB_XRF_20170518.csv"]#,
+#                   "/Users/bgrivna/Desktop/LacCore/DCH/DCH_MSCL_MBLF.csv"]
+        
+#     mdFilePaths = ["/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_MSCL_MBS.csv",
+#                    "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_XRF_MBS.csv",
+#                     "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_XYZ_MBS.csv",
+#                     "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_Subsamples_MBS.csv"]
     for mdPath in mdFilePaths:
         path, ext = os.path.splitext(mdPath)
         exportPath = path + "_spliced" + ext
@@ -489,17 +494,21 @@ def appendDate(text):
 
 def doSparseSpliceToSITExport():
     log.info("--- Converting Sparse Splice to SIT ---")
-    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/MEXI/MEXI_SectionSummary.csv")
-    sp = openSectionSplice("/Users/bgrivna/Desktop/MEXI/MEXI_SparseSpliceTable_revisions20160916.csv")
+    #ss = openSectionSummaryFile("/Users/bgrivna/Desktop/LacCore/DCH Challa/DCH_SectionSummary.csv")
+    #sp = openSectionSplice("/Users/bgrivna/Desktop/LacCore/DCH Challa/DCH_SparseSplice.csv")
+    #ss = openSectionSummaryFile("/Users/bgrivna/Desktop/LacCore/CHB/HSPDP-CHB section summary.csv")
+    #sp = openSectionSplice("/Users/bgrivna/Desktop/LacCore/CHB/CHB_SpliceTable_23Dec_2016.csv")
+    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/CHB May 2017/CHB_SectionSummary.csv")
+    sp = openSparseSplice("/Users/bgrivna/Desktop/CHB May 2017/CHB_SITfromSparse_may_22_2017.csv")
     basepath = "/Users/bgrivna/Desktop/"
-    affPath = basepath + "MEXI_AffineFromSparse_20160916.csv"
-    sitPath = basepath + "MEXI_SITfromSparse_20160916.csv"
+    affPath = basepath + appendDate("CHB_AffineFromSparse") + ".csv"
+    sitPath = basepath + appendDate("CHB_SITFromSparse") + ".csv"
     onSpliceAffRows = convertSectionSpliceToSIT(sp, ss, affPath, sitPath)
     
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
     mancorr = None #openManualCorrelationFile("/Users/bgrivna/Desktop/TDP Towuti/Site 1/JimOffSpliceCorrelations.csv")
-    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr, '1')
+    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr, '2')
     
     allAff = onSpliceAffRows + offSpliceAffRows
     allAff = fillAffineRows(allAff)
