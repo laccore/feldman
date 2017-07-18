@@ -52,6 +52,9 @@ class MeasurementData:
 
     def getByRangeFullID(self, mindepth, maxdepth, site, hole, core, sections):
         return self.df[(self.df.Depth >= mindepth) & (self.df.Depth <= maxdepth) & (self.df.Site == site) & (self.df.Hole == hole) & (self.df.Core == core) & (self.df.Section.isin(sections))]
-    
+
+    def getByFullID(self, site, hole, core, sections):
+        return self.df[(self.df.Site == site) & (self.df.Hole == hole) & (self.df.Core == core) & (self.df.Section.isin(sections))]
+
     def getByCore(self, core):
         return self.df[self.df.Core == core]

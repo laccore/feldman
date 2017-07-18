@@ -8,8 +8,6 @@ import os
 
 import tabularImport as ti
 
-import pandas
-
 
 SectionSummaryFormat = ti.TabularFormat("Section Summary", 
                                          ['Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopDepth', 'BottomDepth', 'CuratedLength'],

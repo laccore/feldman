@@ -252,8 +252,9 @@ def exportSampleData(sitPath, sdPath, exportPath): #Template, holes, exportPath)
 
 
 # todo: MeasDataDB class that hides multi-file (broken into holes) vs single-file data
-#def exportMeasurementData(sitPath, measDataTemplate, holes, exportPath):
-def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSplice=True):
+# - includeOffSplice: if True, all off-splice rows in mdPath will be included in export with 'On-Splice' value = FALSE 
+# - wholeSpliceSection: if True, all rows in all sections included in a splice interval will be exported as 'On-Splice' 
+def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSplice=True, wholeSpliceSection=False):
     log.info("--- Exporting Measurement Data ---")
     
     affine = aff.AffineTable.createWithFile(affinePath)
@@ -274,7 +275,10 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
             sections = [str(x + intTop) for x in range(1 + intBot - intTop)]
         log.debug("   Searching section(s) {}...".format(sections))
         
-        mdrows = md.getByRangeFullID(sirow.topMBSF, sirow.botMBSF, sirow.site, sirow.hole, sirow.core, sections)
+        if wholeSpliceSection:
+            mdrows = md.getByFullID(sirow.site, sirow.hole, sirow.core, sections)
+        else:
+            mdrows = md.getByRangeFullID(sirow.topMBSF, sirow.botMBSF, sirow.site, sirow.hole, sirow.core, sections)
         #print mdrows
         #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdrows), mdrows.iloc[0]['Depth'], mdrows.iloc[-1]['Depth'])
         
@@ -471,7 +475,7 @@ def doMeasurementExport():
     for mdPath in mdFilePaths:
         path, ext = os.path.splitext(mdPath)
         exportPath = path + "_spliced" + ext
-        exportMeasurementData(affinePath, sitPath, mdPath, exportPath)
+        exportMeasurementData(affinePath, sitPath, mdPath, exportPath)#, wholeSpliceSection=True)
 
 def doSampleExport():
     sitPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/Site 1/PLJ_Site1_SITfromSparse.csv"
