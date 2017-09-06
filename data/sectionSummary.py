@@ -6,8 +6,10 @@ Created on May 1, 2016
 
 import os
 
-import tabularImport as ti
+from operator import eq
 
+import numpy
+import tabularImport as ti
 
 SectionSummaryFormat = ti.TabularFormat("Section Summary", 
                                          ['Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopDepth', 'BottomDepth', 'CuratedLength'],
@@ -93,6 +95,33 @@ class SectionSummary:
         result = top + secDepth / 100.0 # cm to m
         #print "section depth {} in section {} = {} overall".format(secDepth, section, result)        
         return result
+    
+    ### begin experiment with more flexible query logic
+    def test(self, df, col, op, value):
+        return op(df[col], value)
+    
+    def query(self, df, tests):
+        curdf = df
+        for t in tests:
+            curdf = curdf[t]
+        return curdf
+#         if len(tests) == 1:
+#             return df[tests[0]]
+#         else:
+#             return df[numpy.logical_and(*tests)]
+    
+    def match(self, df, args):
+        tests = []
+        if 'site' in args:
+            tests.append(self.test(df, 'Site', eq, args['site']))
+        if 'hole' in args:
+            tests.append(self.test(df, 'Hole', eq, args['hole']))
+        if 'core' in args:
+            tests.append(self.test(df, 'Core', eq, args['core']))
+        if 'section' in args:
+            tests.append(self.test(df, 'Section', eq, args['section']))
+        return self.query(df, tests)
+    ### end experiment
     
     def _findCores(self, site, hole, core):
         df = self.dataframe
