@@ -154,13 +154,13 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
                 log.warning("interval type APPEND, adjusting affine to {}m to avoid {}m overlap".format(affine, overlap))
             
         # create data for corresponding affine
-        holecore = str(hole) + str(core)
-        if holecore not in seenCores:
-            seenCores.append(str(hole) + str(core))
+        coreid = str(site) + str(hole) + "-" + str(core)
+        if coreid not in seenCores:
+            seenCores.append(coreid)#str(hole) + str(core))
             affineRow = aff.AffineRow(site, hole, core, row['Core Type'], shiftTop, shiftTop + affine, affine, comment="splice") 
             affineRows.append(affineRow)
         else:
-            log.error("holecore {} already seen, ignoring".format(holecore))
+            log.error("holecore {} already seen, ignoring".format(coreid))
         
         # create new column data 
         topCSFs.append(shiftTop)
@@ -460,10 +460,10 @@ def fillAffineRows(affineRows):
     
     
 def doMeasurementExport():
-    affinePath = "/Users/bgrivna/Desktop/LacCore/CHB/CHB_AffineFromSparse.csv"
-    sitPath = "/Users/bgrivna/Desktop/LacCore/CHB/CHB_SITFromSparse.csv"
+    affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_AffineFromSparse_20161130.csv"
+    sitPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_SITFromSparse_20161130.csv"#,
         
-    mdFilePaths = ["/Users/bgrivna/Desktop/LacCore/CHB/HSPDP_CHB_SRF_20170609.csv"]#,
+    mdFilePaths = ["/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_RGB.csv"]
 #                   "/Users/bgrivna/Desktop/CHB May 2017/CHB_XYZ_20170518.csv",
 #                   "/Users/bgrivna/Desktop/CHB May 2017/CHB_XRF_20170518.csv"]#,
 #                   "/Users/bgrivna/Desktop/LacCore/DCH/DCH_MSCL_MBLF.csv"]
@@ -475,7 +475,7 @@ def doMeasurementExport():
     for mdPath in mdFilePaths:
         path, ext = os.path.splitext(mdPath)
         exportPath = path + "_spliced" + ext
-        exportMeasurementData(affinePath, sitPath, mdPath, exportPath)#, wholeSpliceSection=True)
+        exportMeasurementData(affinePath, sitPath, mdPath, exportPath, wholeSpliceSection=True)
 
 def doSampleExport():
     sitPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/Site 1/PLJ_Site1_SITfromSparse.csv"
@@ -502,11 +502,11 @@ def doSparseSpliceToSITExport():
     #sp = openSectionSplice("/Users/bgrivna/Desktop/LacCore/DCH Challa/DCH_SparseSplice.csv")
     #ss = openSectionSummaryFile("/Users/bgrivna/Desktop/LacCore/CHB/HSPDP-CHB section summary.csv")
     #sp = openSectionSplice("/Users/bgrivna/Desktop/LacCore/CHB/CHB_SpliceTable_23Dec_2016.csv")
-    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/CHB May 2017/CHB_SectionSummary.csv")
-    sp = openSparseSplice("/Users/bgrivna/Desktop/CHB May 2017/CHB_SITfromSparse_may_22_2017.csv")
+    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/DCSI/DCSI_SectionSummary.csv")
+    sp = openSparseSplice("/Users/bgrivna/Desktop/DCSI/DCSI Sparse Splice Demo.csv")
     basepath = "/Users/bgrivna/Desktop/"
-    affPath = basepath + appendDate("CHB_AffineFromSparse") + ".csv"
-    sitPath = basepath + appendDate("CHB_SITFromSparse") + ".csv"
+    affPath = basepath + appendDate("DCSI_AffineFromSparse") + ".csv"
+    sitPath = basepath + appendDate("DCSI_SITFromSparse") + ".csv"
     onSpliceAffRows = convertSectionSpliceToSIT(sp, ss, affPath, sitPath)
     
     # load just-created SIT and find affines for off-splice cores
