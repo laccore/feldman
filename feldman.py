@@ -359,14 +359,14 @@ class OffSpliceCore:
         return "{}{}-{}".format(self.osc.Site, self.osc.Hole, self.osc.Core)
 
 
-def gatherOffSpliceAffines(sit, secsumm, mancorr, site):
+def gatherOffSpliceAffines(sit, secsumm, mancorr, sites):
     # find all off-splice cores: those in section summary that are *not* in SIT
     skippedCoreCount = 0
     offSpliceCores = []
     onSpliceCores = []
     ssCores = secsumm.getCores()
     for index, row in ssCores.iterrows():
-        if row.Site != site: # skip section summary rows from non-site cores
+        if row.Site not in sites: # skip section summary rows from non-site cores
             skippedCoreCount += 1
             continue
         if not sit.containsCore(row.Site, row.Hole, row.Core):
@@ -374,7 +374,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr, site):
         else:
             onSpliceCores.append(row)
             
-    log.info("Found {} off-splice cores in {} section summary cores for site {} - skipped {} non-site cores".format(len(offSpliceCores), len(ssCores), site, skippedCoreCount))
+    log.info("Found {} off-splice cores in {} section summary cores for sites {} - skipped {} non-site cores".format(len(offSpliceCores), len(ssCores), sites, skippedCoreCount))
 
     osAffineShifts = {}
     affineRows = []
@@ -512,7 +512,7 @@ def doSparseSpliceToSITExport():
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
     mancorr = None #openManualCorrelationFile("/Users/bgrivna/Desktop/TDP Towuti/Site 1/JimOffSpliceCorrelations.csv")
-    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr, '2')
+    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr, sit.getSites())
     
     allAff = onSpliceAffRows + offSpliceAffRows
     allAff = fillAffineRows(allAff)

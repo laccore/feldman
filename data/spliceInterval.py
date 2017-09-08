@@ -58,6 +58,10 @@ class SpliceIntervalTable:
         ti.forceStringDatatype(SITFormat.strCols, dataframe)
         return cls(os.path.basename(filepath), dataframe)
     
+    def getSites(self):
+        sites = self.df['Site']
+        return list(set(sites))
+    
     def getIntervals(self):
         rows = []
         for t in self.df.itertuples():
