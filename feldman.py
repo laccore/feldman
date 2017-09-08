@@ -194,62 +194,6 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
     sitDF.to_csv(sitOutPath, index=False)
     
     return affineRows
-    
-# todo: basically a dup of exportMeasurementData with some extra reporting
-def exportSampleData(sitPath, sdPath, exportPath): #Template, holes, exportPath):
-    log.info("--- Exporting Sample Data --- ")
-    # load SIT
-    sit = si.SpliceIntervalTable.createWithFile(sitPath)
-
-    # load sample data
-    sd = sample.SampleData.createWithFile("Many Holes", sdPath)
-#     log.info("{} sample data rows loaded from {} files".format(totalSampleRows, len(holes)))
-    log.info("Applying SIT to Sample Data...")
-
-    sprows = [] # rows comprising spliced dataset
-    rowcount = 0
-    for index, sirow in enumerate(sit.getIntervals()):
-        log.debug("Interval {}: {}".format(index, sirow))
-        
-        sections = [sirow.topSection]
-        if sirow.topSection != sirow.botSection:
-            intTop = int(sirow.topSection)
-            intBot = int(sirow.botSection)
-            sections = [str(x + intTop) for x in range(1 + intBot - intTop)]
-        log.debug("   Searching section(s) {}...".format(sections))
-        
-        sdrows = sd.getByRangeFullID(sirow.topMBSF, sirow.botMBSF, sirow.site, sirow.hole, sirow.core, sections)        
-        log.debug("   found {} rows".format(len(sdrows)))
-        if len(sdrows) > 0:
-            log.debug("...top depth = {}, bottom depth = {}".format(sdrows.iloc[0]['Depth'], sdrows.iloc[-1]['Depth']))
-            log.debug(str(sdrows))
-        else:
-            log.error("Zero matching rows found in sample data")
-        
-        affineOffset = sirow.topMCD - sirow.topMBSF
-        
-        # adjust depth column
-        sdrows.rename(columns={'Depth':'RawDepth'}, inplace=True)
-        
-        # round here until we can upgrade to pandas 0.17.0 (see below)
-        sdrows.insert(8, 'Depth', pandas.Series(sdrows['RawDepth'] + affineOffset).round(3))
-        sdrows.insert(9, 'Offset', round(affineOffset, 3))
-        sdrows = sdrows[ti.SampleExportFormat.req] # reorder to reflect export format
-        
-        sprows.append(sdrows)
-        
-        rowcount += len(sdrows)
-                
-    log.info("Total sample rows exported: {}".format(rowcount))
-    
-    exportdf = pandas.concat(sprows)
-
-    # Argh. Introduced in pandas 0.17.0, we're stuck on 0.16.0 for now...
-    # print "Rounding..."
-    #exportdf = exportdf.round({'Depth': 3, 'Offset': 3})
-    
-    ti.writeToFile(exportdf, exportPath)
-
 
 # todo: MeasDataDB class that hides multi-file (broken into holes) vs single-file data
 # - includeOffSplice: if True, all off-splice rows in mdPath will be included in export with 'On-Splice' value = FALSE 
@@ -477,14 +421,6 @@ def doMeasurementExport():
         exportPath = path + "_spliced" + ext
         exportMeasurementData(affinePath, sitPath, mdPath, exportPath, wholeSpliceSection=True)
 
-def doSampleExport():
-    sitPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/Site 1/PLJ_Site1_SITfromSparse.csv"
-    #sampleDataTemplate = "/Users/bgrivna/Desktop/TDP Towuti/TDP_Samples/TDP-5055-3{}-samples.csv"
-    #holes = ["A"]
-    sdPath = "/Users/bgrivna/Desktop/PLJ Lago Junin/PLJsubsamples.csv"
-    sampleExportPath = "/Users/bgrivna/Desktop/PLJ_Site1_Spliced_Samples.csv"
-    exportSampleData(sitPath, sdPath, sampleExportPath)#, holes, sampleExportPath)
-    
 def doOffSpliceAffineExport():
     sit = si.SpliceIntervalTable.createWithFile("/Users/bgrivna/Desktop/TDP Towuti/Site 2 Exportage/TDP_Site2_SITfromSparse.csv")
     secsumm = openSectionSummaryFile("/Users/bgrivna/Desktop/TDP section summary.csv")
@@ -530,4 +466,3 @@ if __name__ == "__main__":
     #doSparseSpliceToSITExport()
     #doOffSpliceAffineExport()
     doMeasurementExport()
-    #doSampleExport()
