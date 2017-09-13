@@ -161,11 +161,12 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
                 affine += overlap 
                 log.warning("interval type APPEND, adjusting affine to {}m to avoid {}m overlap".format(affine, overlap))
             
-        # create data for corresponding affine
+        # create data for corresponding affine - growth rate and differential offset will be filled by fillAffineRows()
         coreid = str(site) + str(hole) + "-" + str(core)
         if coreid not in seenCores:
-            seenCores.append(coreid)#str(hole) + str(core))
-            affineRow = aff.AffineRow(site, hole, core, row['Core Type'], shiftTop, shiftTop + affine, affine, comment="splice") 
+            seenCores.append(coreid)
+            coreTop = secsumm.getCoreTop(site, hole, core) # use core's top for depths in affine table, not depth of TIE in splice
+            affineRow = aff.AffineRow(site, hole, core, row['Core Type'], coreTop, coreTop + affine, affine, shiftType=row['Splice Type'], comment="splice") 
             affineRows.append(affineRow)
         else:
             log.error("holecore {} already seen, ignoring".format(coreid))
@@ -376,10 +377,10 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr, sites):
             log.debug("No manual shift for {}, seeking closest top...".format(oscid))
             closestCore = secsumm.getCoreWithClosestTop(osc.Site, osc.Hole, osc.Core, onSpliceCores)
             offset = sit.getCoreOffset(closestCore.Site, closestCore.Hole, closestCore.Core)
-            offSpliceMbsf = secsumm.getCoreTop(osc.Site, osc.Hole, osc.Core)
             osAffineShifts[oscid] = offset
-            
-        affineRow = aff.AffineRow(osc.Site, osc.Hole, osc.Core, osc.CoreType, offSpliceMbsf, offSpliceMbsf + offset, offset, comment="off-splice")
+
+        coreTop = secsumm.getCoreTop(osc.Site, osc.Hole, osc.Core)  # use core's top for depths in affine table, not depth of TIE in splice
+        affineRow = aff.AffineRow(osc.Site, osc.Hole, osc.Core, osc.CoreType, coreTop, coreTop + offset, offset, comment="off-splice")
         affineRows.append(affineRow)
         
     return affineRows
