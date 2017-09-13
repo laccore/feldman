@@ -118,10 +118,15 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
         log.debug("bottom section = {}, bottom offset = {}".format(bot, botOff))
         shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff)
         
+        # bail on inverted or zero-length intervals
+        if shiftTop >= shiftBot:
+            log.error("Interval is inverted or zero-length: computed top depth {} >= computed bottom depth {}".format(shiftTop, shiftBot))
+            return
+        
         affine = 0.0
-        if sptype is None: # first interval
+        if sptype is None: # first row - unconcerned about splice type now, it will affect next row of data
             affine = 0.0
-            log.debug("First interval, no splice tie type")
+            log.debug("First interval, splice type irrelevant")
         elif sptype == "APPEND":
             if gap is not None: # user-specified gap
                 gapEndDepth = prevBotMcd + gap 
@@ -140,10 +145,13 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
                         log.warning("Bottom of previous interval is {}m *above* top of next interval in CSF-B space, is this okay?".format(scaledGap))
                     affine = (prevBotMcd - shiftTop) + scaledGap
                     log.debug("Inter-hole APPENDing {} at depth {} to preserve scaled (CSF-B) gap of {}m".format(shiftTop, shiftTop + affine, scaledGap))
-        else: # TIE
+        elif sptype == "TIE":
             # affine = difference between prev bottom MCD and MBLF of current top
             affine = prevBotMcd - shiftTop
             log.debug("TIEing {} to previous bottom depth {}, affine shift of {}".format(shiftTop, prevBotMcd, affine))
+        else:
+            log.error("Encountered unknown splice type {}, bailing out!".format(sptype))
+            return
 
         if prevBotMcd is not None and prevBotMcd > shiftTop + affine:
             log.warning("previous interval bottom MCD {} is below current interval top MCD {}".format(prevBotMcd, shiftTop + affine))
