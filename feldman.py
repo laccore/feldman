@@ -160,14 +160,18 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
                 overlap = prevBotMcd - (shiftTop + affine)                
                 affine += overlap 
                 log.warning("interval type APPEND, adjusting affine to {}m to avoid {}m overlap".format(affine, overlap))
-            
+
         # create data for corresponding affine - growth rate and differential offset will be filled by fillAffineRows()
         coreid = str(site) + str(hole) + "-" + str(core)
         if coreid not in seenCores:
             seenCores.append(coreid)
             coreTop = secsumm.getCoreTop(site, hole, core) # use core's top for depths in affine table, not depth of TIE in splice
-            affineShiftType = "TIE" if str(row['Splice Type']) == "TIE" else "REL"
-            affineRow = aff.AffineRow(site, hole, core, row['Core Type'], coreTop, coreTop + affine, affine, shiftType=affineShiftType, comment="splice") 
+            affineShiftType = _spliceShiftToAffine(sptype, gap)
+            fixedCore = prevRow['Hole'] + prevRow['Core'] if sptype == "TIE" else ""
+            fixedTieCsf = botCSFs[-1] if sptype == "TIE" else ""
+            shiftedTieCsf = shiftTop if sptype == "TIE" else ""
+            affineRow = aff.AffineRow(site, hole, core, row['Core Type'], coreTop, coreTop + affine, affine, shiftType=affineShiftType,
+                                      fixedCore=fixedCore, fixedTieCsf=fixedTieCsf, shiftedTieCsf=shiftedTieCsf, comment="splice") 
             affineRows.append(affineRow)
         else:
             log.error("holecore {} already seen, ignoring".format(coreid))
@@ -204,6 +208,17 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
     sitDF.to_csv(sitOutPath, index=False)
     
     return affineRows
+
+# attempt to map the shift type from the sparse splice to a valid affine shift type
+def _spliceShiftToAffine(spliceShift, gap):
+    affineShiftType = 'REL'
+    if spliceShift == 'TIE': # sparse splice TIEs naturally become affine TIEs
+        affineShiftType = "TIE"
+    elif spliceShift == 'APPEND' and gap is not None:
+        # if user defined a gap, use SET since they actively chose to position the core
+        affineShiftType = "SET"
+    return affineShiftType
+
 
 # todo: MeasDataDB class that hides multi-file (broken into holes) vs single-file data
 # - includeOffSplice: if True, all off-splice rows in mdPath will be included in export with 'On-Splice' value = FALSE 

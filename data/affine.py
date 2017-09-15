@@ -12,7 +12,7 @@ import tabularImport as ti
 AffineFormat = ti.TabularFormat("Affine Table",
                              ['Site', 'Hole', 'Core', 'CoreType', 'Depth CSF (m)', 'Depth CCSF (m)', \
                               'Offset', 'Differential Offset (m)', 'Growth Rate', 'Shift Type', \
-                              'Data Used', 'Quality Comment'],
+                              'Fixed Core', 'Fixed Tie CSF', 'Shifted Tie CSF', 'Data Used', 'Quality Comment'],
                              ['Site', 'Hole', 'Core', 'CoreType', 'Shift Type', 'Data Used', 'Quality Comment'])
 
 class AffineTable:
@@ -46,7 +46,7 @@ class AffineTable:
             
 
 class AffineRow:
-    def __init__(self, site, hole, core, coreType, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', dataUsed='', comment=''):
+    def __init__(self, site, hole, core, coreType, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', fixedCore='', fixedTieCsf='', shiftedTieCsf='', dataUsed='', comment=''):
         self.site = site
         self.hole = hole
         self.core = core
@@ -57,6 +57,9 @@ class AffineRow:
         self.diffOffset = diffOffset
         self.growthRate = growthRate
         self.shiftType = shiftType
+        self.fixedCore = fixedCore
+        self.fixedTieCsf = fixedTieCsf
+        self.shiftedTieCsf = shiftedTieCsf
         self.dataUsed = dataUsed
         self.comment = comment
         
@@ -70,7 +73,8 @@ class AffineRow:
     def asDict(self):
         return {'Site':self.site, 'Hole':self.hole, 'Core':self.core, 'CoreType':self.coreType, 'Depth CSF (m)':self.csf,
                 'Depth CCSF (m)':self.ccsf, 'Offset':self.cumOffset, 'Differential Offset (m)':self.diffOffset,
-                'Growth Rate':self.growthRate, 'Shift Type':self.shiftType, 'Data Used':self.dataUsed, 'Quality Comment':self.comment}
+                'Growth Rate':self.growthRate, 'Shift Type':self.shiftType, 'Fixed Core':self.fixedCore,
+                'Fixed Tie CSF':self.fixedTieCsf, 'Shifted Tie CSF':self.shiftedTieCsf, 'Data Used':self.dataUsed, 'Quality Comment':self.comment}
         
     def __repr__(self):
         return "{}{}-{}{} CSF = {}, CCSF = {}, Offset = {}".format(self.site, self.hole, self.core, self.coreType, self.csf, self.ccsf, self.cumOffset)
