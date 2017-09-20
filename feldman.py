@@ -228,7 +228,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
     
     affine = aff.AffineTable.createWithFile(affinePath)
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
-    md = meas.MeasurementData.createWithFile("Multi-hole", "Gamma Density", mdPath)
+    md = meas.MeasurementData.createWithCombinedSiteHoleFile(mdPath)
     log.info("Loaded {} rows of data from {}".format(len(md.df.index), mdPath))
     log.debug(md.df.dtypes)
 
@@ -253,15 +253,8 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         
         if len(mdrows) > 0:
             affineOffset = sirow.topMCD - sirow.topMBSF
-            
-            # adjust depth column
-            mdrows.rename(columns={'Depth':'RawDepth'}, inplace=True)
-            mdrows.insert(8, 'Depth', pandas.Series(mdrows['RawDepth'] + affineOffset))
-            mdrows.insert(9, 'Offset', affineOffset)
-            mdrows.insert(10, 'On-Splice', 'TRUE')
-            
+            _prepSplicedRowsForExport(md.df, mdrows, affineOffset, onSplice=True) 
             sprows.append(mdrows)
-            
             rowcount += len(mdrows)
         
     onSpliceDF = pandas.concat(sprows)
@@ -280,14 +273,10 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         # matching rows, and setting their offsets should be faster than iterating
         # over all rows in offSpliceRows and finding/setting the affine of each?
         for ar in affine.allRows():
-            shiftedRows = osr[(osr.Site == ar.site) & (osr.Hole == ar.hole) & (osr.Core == ar.core)]# & (osr.CoreType == ar.coreType)]
+            shiftedRows = osr[(osr.Site == ar.site) & (osr.Hole == ar.hole) & (osr.Core == ar.core)]
             log.info("   found {} off-splice rows for affine row {}".format(len(shiftedRows.index), ar))
             
-            shiftedRows.rename(columns={'Depth':'RawDepth'}, inplace=True)
-            shiftedRows.insert(8, 'Depth', pandas.Series(shiftedRows['RawDepth'] + ar.cumOffset))
-            shiftedRows.insert(9, 'Offset', ar.cumOffset)
-            shiftedRows.insert(10, 'On-Splice', 'FALSE')
-            
+            _prepSplicedRowsForExport(md.df, shiftedRows, ar.cumOffset, onSplice=False)
             sprows.append(shiftedRows)
             nonsprows.append(shiftedRows)
             
@@ -300,8 +289,24 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         print unwritten
     
     exportdf = pandas.concat(sprows)
+
+    # TODO: clean up LacCore-specific tweaks to tabular data - pre-processing is in
+    # MeasurementData, post-processing is scattered about in this file
+    # including _prepSplicedRowsForExport()...
+    if "SiteHole" in exportdf: # remove added Site and Hole columns if necessary
+        exportdf = exportdf.drop("Site", axis=1)
+        exportdf = exportdf.drop("Hole", axis=1)
    
     ti.writeToFile(exportdf, exportPath)
+
+# rename and add columns in spliced measurement data per LacCore requirements
+def _prepSplicedRowsForExport(dataframe, rows, offset, onSplice):
+    rows.rename(columns={'Depth':'Depth, Unscaled'}, inplace=True)
+    idIndex = dataframe.columns.get_loc('SectionID') 
+    rows.insert(idIndex + 1, 'Splice Depth', pandas.Series(rows['Depth, Unscaled'] + offset))
+    rows.insert(idIndex + 2, 'Offset', offset)
+    rows.insert(idIndex + 3, 'On-Splice', str(onSplice).upper())
+    
 
 class ManualCorrelationTable:
     def __init__(self, name, dataframe):

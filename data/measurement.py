@@ -6,8 +6,6 @@ Created on Mar 31, 2016
 Routines and classes for the processing of measurement data files
 '''
 
-import os
-
 import tabularImport as ti
 import pandas
 
@@ -25,18 +23,31 @@ MeasurementExportFormat = ti.TabularFormat("Spliced Measurement Data",
                                               'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data', 'RawDepth', 'Offset'],
                                              ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
 
+def _splitSiteHole(dataframe):
+    mergedDF = dataframe
+    if 'SiteHole' in dataframe:
+        # split SiteHole column into separate Site and Hole columns
+        splitSiteHoleDF = dataframe.SiteHole.str.extract("(?P<Site>[0-9]+)(?P<Hole>[A-Z]+)")
+        # add those columns to original dataframe with same index
+        mergedDF = pandas.concat([dataframe, splitSiteHoleDF], axis=1, join_axes=[dataframe.index])
+    return mergedDF
 
 class MeasurementData:
-    def __init__(self, hole, datatype, dataframe):
-        self.hole = hole
-        self.datatype = datatype
+    def __init__(self, dataframe):
         self.df = dataframe
         
     @classmethod
-    def createWithFile(cls, hole, datatype, filepath):
+    def createWithFile(cls, filepath):
         dataframe = ti.readFile(filepath)
         ti.forceStringDatatype(MeasurementFormat.strCols, dataframe)
-        return cls(hole, datatype, dataframe)
+        return cls(dataframe)
+    
+    @classmethod
+    def createWithCombinedSiteHoleFile(cls,filepath):
+        dataframe = ti.readFile(filepath)
+        dataframe = _splitSiteHole(dataframe)
+        ti.forceStringDatatype(MeasurementFormat.strCols, dataframe)
+        return cls(dataframe)    
     
     # includes depths == mindepth or maxdepth
     def getByRange(self, mindepth, maxdepth):
