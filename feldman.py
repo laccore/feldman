@@ -89,6 +89,8 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False
 
     
 def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
+    LazyAppend = False # Created to lazily handle APPENDs in PLJ sparse as we did in 2016 - TODO: parameterize?
+    
     seenCores = [] # list of cores that have already been added to affine
     affineRows = [] # list of dicts, each representing a generated affine table row
     
@@ -134,7 +136,7 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
                 log.debug("User specified gap of {}m between previous bottom ({}m) and current top ({}m), affine = {}m".format(gap, prevBotMcd, shiftTop, affine))
             else: # default gap
                 assert prevRow is not None
-                if hole == prevRow['Hole']: # hole hasn't changed, use same affine shift
+                if hole == prevRow['Hole'] or LazyAppend: # hole hasn't changed, use same affine shift
                     affine = prevAffine
                     log.debug("APPENDing {} at depth {} based on previous affine {}".format(shiftTop, shiftTop + affine, affine))
                 else: # different hole, use scaled depths to determine gap
