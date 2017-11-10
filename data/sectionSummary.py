@@ -8,7 +8,9 @@ import os
 
 from operator import eq
 
-import numpy
+import unittest
+
+import pandas
 import tabularImport as ti
 
 SectionSummaryFormat = ti.TabularFormat("Section Summary", 
@@ -24,6 +26,11 @@ class SectionSummary:
     @classmethod
     def createWithFile(cls, filepath):
         dataframe = ti.readFile(filepath, na_values=['?', '??', '???'])
+        
+        # force pandas.dtypes to "object" (string) for ID components
+        objcols = ["Site", "Hole", "Core", "CoreType", "Section"]
+        ti.forceStringDatatype(objcols, dataframe)
+        
         return cls(os.path.basename(filepath), dataframe)
     
     def containsCore(self, site, hole, core):
@@ -90,6 +97,26 @@ class SectionSummary:
         sec = self._findSectionAtDepth(site, hole, core, depth)
         return sec
     
+    def getGaps(self, site, hole, core, section):
+        gapList = []
+        if 'Gaps' in self.dataframe:
+            gapStr = self._getSectionValue(site, hole, core, section, 'Gaps') # list of space-delimited gaps, each of form 'top-bottom'
+            if not pandas.isnull(gapStr):
+                for gapInterval in [gap.split('-') for gap in gapStr.split(' ')]:
+                    top, bot = float(gapInterval[0]), float(gapInterval[1])
+                    gapList.append((top, bot))
+        return gapList
+    
+    # return total length (in cm) of gaps above sectionDepth if 'Gaps' column
+    # is present and specified section has gaps, otherwise 0.
+    # - sectionDepth must be in cm
+    def getTotalGapAboveSectionDepth(self, site, hole, core, section, sectionDepth):
+        gapTotal = 0
+        for gap in self.getGaps(site, hole, core, section):
+            if sectionDepth > gap[0]:
+                gapTotal += gap[1] - gap[0]
+        return gapTotal
+    
     def sectionDepthToTotal(self, site, hole, core, section, secDepth):
         top = self.getSectionTop(site, hole, core, section)
         result = top + secDepth / 100.0 # cm to m
@@ -148,3 +175,22 @@ class SectionSummary:
     def _getSectionValue(self, site, hole, core, section, columnName):
         section = self._findSection(site, hole, core, section)
         return section.iloc[0][columnName]
+
+
+class TestSectionSummary(unittest.TestCase):    
+    def test_gaps(self):
+        ss = SectionSummary.createWithFile("../testdata/SectionSummaryWithGaps.csv")
+        #print ss.dataframe.dtypes
+        self.assertTrue(ss.getGaps('1', 'A', '2', '1') == [])
+        self.assertTrue(ss.getGaps('1', 'A', '3', '2') == [(0.0, 2.5)])
+        self.assertTrue(ss.getTotalGapAboveSectionDepth('1', 'A', '3', '2', 0.0) == 0.0)
+        self.assertTrue(ss.getTotalGapAboveSectionDepth('1', 'A', '3', '2', 1.0) == 2.5)
+        self.assertTrue(ss.getGaps('1', 'A', '18', '1') == [(0.0, 0.5), (94.5, 96.0), (151.0, 152.5)])
+        self.assertTrue(ss.getTotalGapAboveSectionDepth('1', 'A', '18', '1', 95.0) == 2.0)
+        self.assertTrue(ss.getTotalGapAboveSectionDepth('1', 'A', '18', '1', 152.5) == 3.5)
+    
+    
+if __name__ == "__main__":
+    for testcase in [TestSectionSummary]:
+        suite = unittest.TestLoader().loadTestsFromTestCase(testcase)
+        unittest.TextTestRunner(verbosity=2).run(suite)

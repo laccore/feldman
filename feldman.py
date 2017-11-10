@@ -75,7 +75,7 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False
     if offset/100.0 > curatedLength:
         log.warning("   offset {}cm is beyond curated length of section {}m".format(offset, curatedLength))
 
-    depth = secTop + (offset/100.0)
+    depth = secTop + (offset/100.0) - (secsumm.getTotalGapAboveSectionDepth(site, hole, core, section, offset)/100.0)
         
     # if using scaled depths, compress depth to drilled interval
     drilledLength = (secBot - secTop) * 100.0 # cm
