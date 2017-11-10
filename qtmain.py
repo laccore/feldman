@@ -4,7 +4,8 @@ Created on Jul 30, 2017
 @author: bgrivna
 '''
 
-import os, sys
+import os, sys, user
+from os.path import basename, splitext
 
 from PyQt5 import QtWidgets
 
@@ -70,19 +71,20 @@ class MainWindow(QtWidgets.QWidget):
         self.prefs.write()
         
     def sparseToSit(self):
-        ssPath = self.ssFile.getPath()
-        if not os.path.exists(ssPath):
-            self._warnbox("Invalid path", "Section Summary file '{}' does not exist".format(ssPath))
+        secSummPath = self.secSummFile.getPath()
+        if not os.path.exists(secSummPath):
+            self._warnbox("Invalid path", "Section Summary file '{}' does not exist".format(secSummPath))
             return
         sparsePath = self.sparseFile.getPath()
         if not os.path.exists(sparsePath):
             self._warnbox("Invalid path", "Sparse Splice file '{}' does not exist".format(sparsePath))
             return
         
-        outFilePrefix = os.path.basename(sparsePath)
+        outFilePrefix = splitext(basename(sparsePath))[0]
         
-        feldman.convertSectionSpliceToSIT(sparsePath, ssPath, affineOutPath, sitOutPath)
-        
+        affineOutPath = os.path.join(self.workingDir.getPath(), outFilePrefix + "-affine.csv")
+        sitOutPath = os.path.join(self.workingDir.getPath(), outFilePrefix + "-splice.csv")
+        feldman.convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath)
         
     def _warnbox(self, title, message):
         QtWidgets.QMessageBox.warning(self, title, message)

@@ -7,7 +7,6 @@ gun trying to get Towuti its data...
 
 from datetime import date
 import logging as log
-import os.path
 
 import numpy
 import pandas
@@ -19,7 +18,6 @@ import data.spliceInterval as si
 import data.measurement as meas
 import data.sectionSummary as ss
 import data.sparseSplice as ssplice
-import sample
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
 def openCorrelatorFunkyFormatFile(filename):
@@ -46,7 +44,7 @@ def openSparseSplice(filename):
     splice = ssplice.SparseSplice.createWithFile(filename)
     
     log.debug("Sparse Splice pandas datatypes: {}".format(splice.dataframe.dtypes))
-    log.debug("string columns: {}", ssplice.SparseSpliceFormat.strCols)
+    #log.debug("string columns: {}".format(ssplice.SparseSpliceFormat.strCols))
     
     return splice.dataframe
 
@@ -87,10 +85,12 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False
         
     return depth
 
-    
-def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
-    LazyAppend = False # Created to lazily handle APPENDs in PLJ sparse as we did in 2016 - TODO: parameterize?
-    
+
+# options:
+# - lazyAppend - use previous core's affine shift even if it's from a different hole
+# - useScaledDepths - convert section depths to total depth using ScaledTopDepth and ScaledBottomDepth
+#   in SectionSummary instead of (unscaled) TopDepth and BottomDepth     
+def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False):
     seenCores = [] # list of cores that have already been added to affine
     affineRows = [] # list of dicts, each representing a generated affine table row
     
@@ -113,12 +113,12 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
         top = row['Top Section']
         topOff = row['Top Offset']
         log.debug("top section = {}, top offset = {}".format(top, topOff))
-        shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff)
+        shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff, useScaledDepths)
         
         bot = row['Bottom Section']
         botOff = row['Bottom Offset']
         log.debug("bottom section = {}, bottom offset = {}".format(bot, botOff))
-        shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff)
+        shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff, useScaledDepths)
         
         # bail on inverted or zero-length intervals
         if shiftTop >= shiftBot:
@@ -136,11 +136,12 @@ def convertSectionSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath):
                 log.debug("User specified gap of {}m between previous bottom ({}m) and current top ({}m), affine = {}m".format(gap, prevBotMcd, shiftTop, affine))
             else: # default gap
                 assert prevRow is not None
-                if hole == prevRow['Hole'] or LazyAppend: # hole hasn't changed, use same affine shift
+                if hole == prevRow['Hole'] or lazyAppend: # hole hasn't changed, use same affine shift
                     affine = prevAffine
                     log.debug("APPENDing {} at depth {} based on previous affine {}".format(shiftTop, shiftTop + affine, affine))
                 else: # different hole, use scaled depths to determine gap
-                    prevBotScaledDepth = getOffsetDepth(secsumm, prevRow['Site'], prevRow['Hole'], prevRow['Core'], prevRow['Bottom Section'], prevRow['Bottom Offset'], scaledDepth=True)
+                    prevBotScaledDepth = getOffsetDepth(secsumm, prevRow['Site'], prevRow['Hole'], prevRow['Core'],
+                                                        prevRow['Bottom Section'], prevRow['Bottom Offset'], scaledDepth=True)
                     topScaledDepth = getOffsetDepth(secsumm, site, hole, core, top, topOff, scaledDepth=True)
                     scaledGap = topScaledDepth - prevBotScaledDepth
                     if scaledGap < 0.0:
@@ -286,9 +287,9 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
             
         log.info("Total off-splice rows to be written: {}".format(totalOffSplice))
         
-        unwritten = osr[~(osr.index.isin(pandas.concat(nonsprows).index))] # rows that still haven't been written!
-        log.info("Rows remaining unwritten: {}".format(len(unwritten.index)))
-        print unwritten
+        #unwritten = osr[~(osr.index.isin(pandas.concat(nonsprows).index))] # rows that still haven't been written!
+        #log.info("Rows remaining unwritten: {}".format(len(unwritten.index)))
+        #print unwritten
     
     exportdf = pandas.concat(sprows)
 
@@ -376,7 +377,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr, sites):
                 log.debug("SIT contains on-splice core")
 
                 # use sparse splice to SIT logic to determine affine for that core based on alignment of section depths
-                offSpliceMbsf = getOffsetDepth(secsumm, mcc.Site1, mcc.Hole1, mcc.Core1, mcc.Section1, mcc.SectionDepth1)
+                offSpliceMbsf = getOffsetDepth(secsumm, mcc.Site1, mcc.Hole1, mcc.Core1, mcc.Section1, mcc.SectionDepth1) # TODO: UPDATE
                 log.debug("off-splice: {}@{} = {} MBSF".format(oscid, mcc.SectionDepth1, offSpliceMbsf))
                 onSpliceMbsf = getOffsetDepth(secsumm, mcc.Site2, mcc.Hole2, mcc.Core2, mcc.Section2, mcc.SectionDepth2)
                 log.debug("on-splice: {}{}-{}@{} = {} MBSF".format(mcc.Site2, mcc.Hole2, mcc.Core2, mcc.SectionDepth2, onSpliceMbsf))
@@ -435,52 +436,20 @@ def fillAffineRows(affineRows):
     return sortedRows
     
     
-def doMeasurementExport():
-    affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_AffineFromSparse_20161130.csv"
-    sitPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_SITFromSparse_20161130.csv"#,
-        
-    mdFilePaths = ["/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_RGB.csv"]
-#                   "/Users/bgrivna/Desktop/CHB May 2017/CHB_XYZ_20170518.csv",
-#                   "/Users/bgrivna/Desktop/CHB May 2017/CHB_XRF_20170518.csv"]#,
-#                   "/Users/bgrivna/Desktop/LacCore/DCH/DCH_MSCL_MBLF.csv"]
-        
-#     mdFilePaths = ["/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_MSCL_MBS.csv",
-#                    "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_XRF_MBS.csv",
-#                     "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_XYZ_MBS.csv",
-#                     "/Users/bgrivna/Desktop/CHB/HSPDP-CHB14_Subsamples_MBS.csv"]
-    for mdPath in mdFilePaths:
-        path, ext = os.path.splitext(mdPath)
-        exportPath = path + "_spliced" + ext
-        exportMeasurementData(affinePath, sitPath, mdPath, exportPath, wholeSpliceSection=True)
-
-def doOffSpliceAffineExport():
-    sit = si.SpliceIntervalTable.createWithFile("/Users/bgrivna/Desktop/TDP Towuti/Site 2 Exportage/TDP_Site2_SITfromSparse.csv")
-    secsumm = openSectionSummaryFile("/Users/bgrivna/Desktop/TDP section summary.csv")
-    mancorr = None #openManualCorrelationFile("/Users/bgrivna/Desktop/JimOffSpliceCorrelations.csv")
-    exportPath = "/Users/bgrivna/Desktop/TDP_Site2_offSpliceAffine.csv"
-    affineRows = gatherOffSpliceAffines(sit, secsumm, mancorr, exportPath, site="2")
-    # write affineRows to file...
-
 def appendDate(text):
     return text + "_{}".format(date.today().isoformat())
 
-def doSparseSpliceToSITExport():
+# options: LazyAppend, UseScaledDepths, Manual Correlation File 
+def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False, manualCorrelationPath=None):
     log.info("--- Converting Sparse Splice to SIT ---")
-    #ss = openSectionSummaryFile("/Users/bgrivna/Desktop/LacCore/DCH Challa/DCH_SectionSummary.csv")
-    #sp = openSectionSplice("/Users/bgrivna/Desktop/LacCore/DCH Challa/DCH_SparseSplice.csv")
-    #ss = openSectionSummaryFile("/Users/bgrivna/Desktop/LacCore/CHB/HSPDP-CHB section summary.csv")
-    #sp = openSectionSplice("/Users/bgrivna/Desktop/LacCore/CHB/CHB_SpliceTable_23Dec_2016.csv")
-    ss = openSectionSummaryFile("/Users/bgrivna/Desktop/DCSI/DCSI_SectionSummary.csv")
-    sp = openSparseSplice("/Users/bgrivna/Desktop/DCSI/DCSI Sparse Splice Demo.csv")
-    basepath = "/Users/bgrivna/Desktop/"
-    affPath = basepath + appendDate("DCSI_AffineFromSparse") + ".csv"
-    sitPath = basepath + appendDate("DCSI_SITFromSparse") + ".csv"
-    onSpliceAffRows = convertSectionSpliceToSIT(sp, ss, affPath, sitPath)
+    ss = openSectionSummaryFile(secSummPath)
+    sp = openSparseSplice(sparsePath)
+
+    onSpliceAffRows = convertSparseSpliceToSIT(sp, ss, affineOutPath, sitOutPath, useScaledDepths, lazyAppend)
     
     # load just-created SIT and find affines for off-splice cores
-    sit = si.SpliceIntervalTable.createWithFile(sitPath)
-    mancorr = None #openManualCorrelationFile("/Users/bgrivna/Desktop/TDP Towuti/Site 1/JimOffSpliceCorrelations.csv")
-    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr, sit.getSites())
+    sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
+    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, manualCorrelationPath, sit.getSites())
     
     allAff = onSpliceAffRows + offSpliceAffRows
     allAff = fillAffineRows(allAff)
@@ -488,13 +457,43 @@ def doSparseSpliceToSITExport():
     arDicts = [ar.asDict() for ar in allAff]
     
     affDF = pandas.DataFrame(arDicts, columns=aff.AffineFormat.req)
-    log.info("writing affine table to {}".format(affPath))
+    log.info("writing affine table to {}".format(affineOutPath))
     log.debug("affine table column types:\n{}".format(affDF.dtypes))
-    affDF.to_csv(affPath, index=False)
+    affDF.to_csv(affineOutPath, index=False)
+
+# sspath - path to Section Summary with gap data in separate columns
+# Output a list of space-delimited gaps of form [gap top]-[gap bottom]
+# for each section, including sections with no gaps so data aligns with
+# source Section Summary  
+def convertSSGapColumnsToSingle(sspath):
+    mergedGaps = []
+    ss = ti.readFile(sspath)
+    for index, row in ss.iterrows():
+        gaps = []
+        for gapNum in range(5):
+            tcol = "Gap {} T".format(gapNum + 1)
+            bcol = "Gap {} B".format(gapNum + 1)
+            if not numpy.isnan(row[tcol]) and not numpy.isnan(row[bcol]):
+                gaps.append(str(row[tcol]) + "-" + str(row[bcol]))
+        mergedGaps.append(' '.join(gaps))
+        
+    for mg in mergedGaps:
+        print mg
+   
 
 if __name__ == "__main__":
     log.basicConfig(level=log.DEBUG)
-    
-    #doSparseSpliceToSITExport()
-    #doOffSpliceAffineExport()
-    doMeasurementExport()
+
+    # convert sparse splice to SIT    
+#     ssPath = "[section summary path]"
+#     sparsePath = "[sparse splice path]"
+#     basepath = "[root export path and filename prefix]"
+#     affPath = basepath + appendDate("_AffineFromSparse") + ".csv"
+#     sitPath = basepath + appendDate("_SITFromSparse") + ".csv"
+#     convertSparseSpliceToSIT(ssPath, sparsePath, affPath, sitPath)
+
+    # splice measurement data    
+#     for mdPath in mdFilePaths:
+#         path, ext = os.path.splitext(mdPath)
+#         exportPath = path + "_spliced" + ext
+#         exportMeasurementData(affinePath, sitPath, mdPath, exportPath, wholeSpliceSection=False)
