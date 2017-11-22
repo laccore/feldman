@@ -5,8 +5,9 @@ need to be generalized and modularized in an intelligent way, but for now we're 
 gun trying to get Towuti its data...
 '''
 
-from datetime import date
+from datetime import date, datetime
 import logging as log
+import os
 
 import numpy
 import pandas
@@ -19,13 +20,14 @@ import data.measurement as meas
 import data.sectionSummary as ss
 import data.sparseSplice as ssplice
 
+
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
 def openCorrelatorFunkyFormatFile(filename):
     datfile = open(filename, 'rU')
     headers = ["Exp", "Site", "Hole", "Core", "CoreType", "Section", "TopOffset", "BottomOffset", "Depth", "Data", "RunNo"]
     df = pandas.read_csv(datfile, header=None, names=headers, sep=" \t", skipinitialspace=True, comment="#", engine='python')
     datfile.close()
-    print df.dtypes
+    #print df.dtypes
     # df can now be written to a normal CSV
 
 # assumes typical CSV format (comma-delimited, no spaces)
@@ -66,12 +68,13 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False
     secTop = secsumm.getSectionTop(site, hole, core, section) if not scaledDepth else secsumm.getScaledSectionTop(site, hole, core, section) 
     secBot = secsumm.getSectionBot(site, hole, core, section) if not scaledDepth else secsumm.getScaledSectionBot(site, hole, core, section)
     scaledTxt = "scaled " if scaledDepth else ""
-    log.debug("   {}section: {}-{}{}-{}, top = {}m, bot = {}m".format(scaledTxt, site, hole, core, section, secTop, secBot))
+    sectionId = "{}{}-{}-{}".format(site, hole, core, section)
+    log.debug("   {}section: {}, top = {}m, bot = {}m".format(scaledTxt, sectionId, secTop, secBot))
     log.debug("   {}section offset = {}cm + {}m = {}m".format(scaledTxt, offset, secTop, secTop + offset/100.0))
 
     curatedLength = secsumm.getSectionLength(site, hole, core, section)
     if offset/100.0 > curatedLength:
-        log.warning("   offset {}cm is beyond curated length of section {}m".format(offset, curatedLength))
+        log.warning("   section {}: offset {}cm is beyond curated length of section {}m".format(sectionId, offset, curatedLength))
 
     depth = secTop + (offset/100.0) - (secsumm.getTotalGapAboveSectionDepth(site, hole, core, section, offset)/100.0)
         
@@ -80,7 +83,7 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False
     if scaledDepth and curatedLength > drilledLength:
         compressionFactor = drilledLength / curatedLength
         compressedDepth = secTop + (offset/100.0 * compressionFactor)
-        log.warning("   curated length {}cm exceeds drilled length {}cm, compressing depth {}m to {}m".format(curatedLength, drilledLength, depth, compressedDepth))
+        log.warning("   section {}: curated length {}cm exceeds drilled length {}cm, compressing depth {}m to {}m".format(sectionId, curatedLength, drilledLength, depth, compressedDepth))
         depth = compressedDepth
         
     return depth
@@ -145,7 +148,7 @@ def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useS
                     topScaledDepth = getOffsetDepth(secsumm, site, hole, core, top, topOff, scaledDepth=True)
                     scaledGap = topScaledDepth - prevBotScaledDepth
                     if scaledGap < 0.0:
-                        log.warning("Bottom of previous interval is {}m *above* top of next interval in CSF-B space, is this okay?".format(scaledGap))
+                        log.warning("Bottom of previous interval is {}m *above* top of next interval in CSF-B space".format(scaledGap))
                     affine = (prevBotMcd - shiftTop) + scaledGap
                     log.debug("Inter-hole APPENDing {} at depth {} to preserve scaled (CSF-B) gap of {}m".format(shiftTop, shiftTop + affine, scaledGap))
         elif sptype == "TIE":
@@ -193,7 +196,7 @@ def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useS
         
         # warnings
         if shiftTop >= shiftBot:
-            log.warning("interval top {} at or below interval bottom {} in MBLF".format(shiftTop, shiftBot))
+            log.warning("{}: interval top {} at or below interval bottom {} in MBLF".format(coreid, shiftTop, shiftBot))
         
         # track splice type and (optional) gap, used to determine the next interval's depths
         sptype = row['Splice Type']
@@ -206,7 +209,7 @@ def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useS
     sitDF.insert(10, 'Bottom Depth CSF-A', pandas.Series(botCSFs))
     sitDF.insert(11, 'Bottom Depth CCSF-A', pandas.Series(botCCSFs))
     
-    log.info("writing splice interval table to {}".format(sitOutPath))
+    log.info("writing splice interval table to {}".format(os.path.abspath(sitOutPath)))
     log.debug("splice interval table column types:{}".format(sitDF.dtypes))
     sitDF.to_csv(sitOutPath, index=False)
     
@@ -441,7 +444,12 @@ def appendDate(text):
 
 # options: LazyAppend, UseScaledDepths, Manual Correlation File 
 def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False, manualCorrelationPath=None):
-    log.info("--- Converting Sparse Splice to SIT ---")
+    log.info("--- Converting Sparse Splice to Affine and SIT ---")
+    log.info("{}".format(datetime.now()))
+    log.debug("Using Section Summary {}".format(secSummPath))
+    log.debug("Using Sparse Splice {}".format(sparsePath))
+    log.debug("Options: Use Scaled Depths = {}, Lazy Append = {}, Manual Correlation File = {}".format(useScaledDepths, lazyAppend, manualCorrelationPath))
+    
     ss = openSectionSummaryFile(secSummPath)
     sp = openSparseSplice(sparsePath)
 
@@ -457,9 +465,11 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     arDicts = [ar.asDict() for ar in allAff]
     
     affDF = pandas.DataFrame(arDicts, columns=aff.AffineFormat.req)
-    log.info("writing affine table to {}".format(affineOutPath))
+    log.info("writing affine table to {}".format(os.path.abspath(affineOutPath)))
     log.debug("affine table column types:\n{}".format(affDF.dtypes))
     affDF.to_csv(affineOutPath, index=False)
+    
+    log.info("Conversion complete.")
 
 # sspath - path to Section Summary with gap data in separate columns
 # Output a list of space-delimited gaps of form [gap top]-[gap bottom]

@@ -6,28 +6,36 @@ Qt GUI elements
 @author: bgrivna
 '''
 
-import platform
+import logging, os, platform
 
 from PyQt5 import QtWidgets
 
+def warnbox(parent, title="Warning", message=""):
+    QtWidgets.QMessageBox.warning(parent, title, message)
+    
+def errbox(parent, title="Error", message=""):
+    QtWidgets.QMessageBox.critical(parent, title, message)
 
-def chooseDirectory(parent, title="Choose directory", path=""):
-    dlg = QtWidgets.QFileDialog(parent, title, path)
+def infobox(parent, title="Information", message=""):    
+    QtWidgets.QMessageBox.information(parent, title, message)
+
+def chooseDirectory(parent, path=""):
+    dlg = QtWidgets.QFileDialog(parent, "Choose directory", path)
     selectedDir = dlg.getExistingDirectory(parent)
     return selectedDir
 
-def chooseFile(parent, title="Choose file", path=""):
-    dlg = QtWidgets.QFileDialog(parent, title, path)
+def chooseFile(parent, path=""):
+    dlg = QtWidgets.QFileDialog(parent, "Choose file", path)
     chosenFile = dlg.getOpenFileName(parent)
     return chosenFile
 
-def chooseFiles(parent, title="Choose file(s)", path=""):
-    dlg = QtWidgets.QFileDialog(parent, title, path)
+def chooseFiles(parent, path=""):
+    dlg = QtWidgets.QFileDialog(parent, "Choose file(s)", path)
     chosenFiles = dlg.getOpenFileNames(parent)
     return chosenFiles
 
-def chooseSaveFile(parent, title="Save file", path=""):
-    dlg = QtWidgets.QFileDialog(parent, title, path)
+def chooseSaveFile(parent, path=""):
+    dlg = QtWidgets.QFileDialog(parent, "Save file", path)
     saveFile = dlg.getSaveFileName(parent)
     return saveFile    
 
@@ -49,6 +57,7 @@ class FileListPanel(QtWidgets.QWidget):
         arlayout.addWidget(self.delButton)
         vlayout.setSpacing(0)
         vlayout.addLayout(arlayout)
+        vlayout.setContentsMargins(0,0,0,0)
         
     def addFile(self, newfile):
         self.sslist.addItem(QtWidgets.QListWidgetItem(newfile))
@@ -91,6 +100,7 @@ class SingleFilePanel(QtWidgets.QWidget):
         self.browseButton = QtWidgets.QPushButton("...", self)
         self.browseButton.clicked.connect(self.onBrowse)
         layout.addWidget(self.browseButton)
+        layout.setContentsMargins(0,0,0,0)
         
     def getPath(self):
         return self.filePath.text()
@@ -100,18 +110,58 @@ class SingleFilePanel(QtWidgets.QWidget):
 
     def onBrowse(self):
         if self.fileType == self.OpenFile:
-            f = chooseFile(self)
+            f = chooseFile(self, self.getPath())
             if f[0] != "":
                 self.filePath.setText(f[0])
         elif self.fileType == self.SaveFile:
-            f = chooseSaveFile(self)
+            f = chooseSaveFile(self, self.getPath())
             if f[0] != "":
                 self.filePath.setText(f[0])                
         elif self.fileType == self.Directory:
-            f = chooseDirectory(self)
+            f = chooseDirectory(self, self.getPath())
             if f != "":
                 self.filePath.setText(f)
+                
 
+# Handler to direct python logging output to QTextEdit control
+class LogTextArea(logging.Handler):
+    def __init__(self, parent, label):
+        self.parent = parent
+        self.layout = QtWidgets.QVBoxLayout()
+        logging.Handler.__init__(self)
+        self.logText = QtWidgets.QTextEdit(parent)
+        self.logText.setReadOnly(True)
+        self.logText.setToolTip("It's all happening.")
+        
+        self.layout.setContentsMargins(0,0,0,0)
+        self.layout.setSpacing(0)
+        self.layout.addWidget(QtWidgets.QLabel(label))
+        self.layout.addWidget(self.logText)
+        
+        self.verboseCheckbox = QtWidgets.QCheckBox("Include Debugging Information")
+        self.layout.addWidget(self.verboseCheckbox)
+        
+    def isVerbose(self):
+        return self.verboseCheckbox.isChecked()
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.logText.insertPlainText(msg + "\n")
+        self.parent.app.processEvents()
+
+    def write(self, m):
+        pass
+    
+# add help text below widget
+def HelpTextDecorator(widget, helpText, spacing=5):
+    layout = QtWidgets.QVBoxLayout()
+    layout.setSpacing(spacing)
+    layout.setContentsMargins(0,0,0,0)
+    layout.addWidget(widget)
+    layout.addWidget(LabelFactory.makeDescLabel(helpText))
+    return layout
+
+# create appropriately-sized labels for the current OS
 class LabelFactory:
     # main label for an item, standard font size
     @classmethod
