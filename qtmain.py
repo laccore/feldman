@@ -60,12 +60,16 @@ class MainWindow(QtWidgets.QWidget):
         mdList = self.prefs.get("lastMeasurementDataPathsList", [])
         for md in mdList:
             self.mdList.addFile(md)
+        geom = self.prefs.get("windowGeometry", None)
+        if geom is not None:
+            self.setGeometry(geom)
     
     def savePrefs(self):
         self.prefs.set("lastSectionSummaryPath", self.secSummFile.getPath())
         self.prefs.set("lastAffinePath", self.affineFile.getPath())
         self.prefs.set("lastSITPath", self.sitFile.getPath())
         self.prefs.set("lastMeasurementDataPathsList", self.mdList.getFiles())
+        self.prefs.set("windowGeometry", self.geometry())
         self.prefs.write()
         
     def sparseToSit(self):
@@ -138,9 +142,13 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         
     def installPrefs(self):
         self.sparseFile.setPath(self.parent.prefs.get("lastSparseSplicePath"))
+        geom = self.parent.prefs.get("convertSparseWindowGeometry", None)
+        if geom is not None:
+            self.setGeometry(geom)
      
     def savePrefs(self):
         self.parent.prefs.set("lastSparseSplicePath", self.sparseFile.getPath())
+        self.parent.prefs.set("convertSparseWindowGeometry", self.geometry())
         
     def convert(self):
         try:
@@ -168,6 +176,8 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         self.sitOutPath = self.sitOutFile.getPath()
         
         self.closeButton.setEnabled(False) # prevent close of dialog
+        self.convertButton.setText("Converting...")
+        self.convertButton.setEnabled(False)
         
         try:
             logging.getLogger().addHandler(self.logText)
@@ -183,6 +193,8 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         finally:
             logging.getLogger().removeHandler(self.logText)
             self.closeButton.setEnabled(True)
+            self.convertButton.setText("Convert")
+            self.convertButton.setEnabled(True)
         
     def closeEvent(self, event):
         self.savePrefs()
