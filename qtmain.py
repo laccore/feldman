@@ -43,6 +43,7 @@ class MainWindow(QtWidgets.QWidget):
         self.sparseToSitButton = QtWidgets.QPushButton("Convert Sparse Splice to SIT")
         self.sparseToSitButton.clicked.connect(self.sparseToSit)
         self.spliceDataButton = QtWidgets.QPushButton("Splice Measurement Data")
+        self.spliceDataButton.clicked.connect(self.spliceData)
         hlayout = QtWidgets.QHBoxLayout()
         hlayout.addWidget(self.sparseToSitButton)
         hlayout.addWidget(self.spliceDataButton)
@@ -85,6 +86,10 @@ class MainWindow(QtWidgets.QWidget):
                 self.affineFile.setPath(dlg.affineOutPath)
             if len(self.sitFile.getPath()) == 0:
                 self.sitFile.setPath(dlg.sitOutPath)
+                
+    def spliceData(self):
+        dlg = SpliceMeasurementDataDialog(self, self.affineFile.getPath(), self.sitFile.getPath(), self.mdList.getFiles())
+        dlg.exec_()# == QtWidgets.QDialog.Accepted
                 
     def warnbox(self, title, message):
         gui.warnbox(self, title, message)
@@ -199,6 +204,114 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
     def closeEvent(self, event):
         self.savePrefs()
         self.accept()
+
+
+class SpliceMeasurementDataDialog(QtWidgets.QDialog):
+    def __init__(self, parent, affinePath, sitPath, mdPaths):
+        QtWidgets.QDialog.__init__(self, parent)
+        
+        self.parent = parent
+        
+        self.initGUI(affinePath, sitPath, mdPaths)
+        self.installPrefs()
+        
+    def initGUI(self, affinePath, sitPath, mdPaths):
+        self.setWindowTitle("Splice Measurement Data")
+        vlayout = QtWidgets.QVBoxLayout(self)
+        vlayout.setSpacing(20)
+        
+        self.affineFile = gui.SingleFilePanel("Affine Table", fileType=gui.SingleFilePanel.OpenFile)
+        self.affineFile.setPath(affinePath)
+        self.sitFile = gui.SingleFilePanel("Splice Interval Table", fileType=gui.SingleFilePanel.OpenFile)
+        self.sitFile.setPath(sitPath)
+        vlayout.addLayout(gui.HelpTextDecorator(self.affineFile, "Affine shifts to apply to data. Should correspond to applied splice.", spacing=0))
+        vlayout.addLayout(gui.HelpTextDecorator(self.sitFile, "Splice to apply to data.", spacing=0))
+        
+        self.includeOffSplice = QtWidgets.QCheckBox("Include Off-Splice Data")
+        iosHelpText = "All off-splice rows will be included in spliced data with On-Splice = FALSE."
+        vlayout.addLayout(gui.HelpTextDecorator(self.includeOffSplice, iosHelpText))
+        
+        self.wholeSpliceSection = QtWidgets.QCheckBox("Whole Splice Sections")
+        wssHelpText = "All rows in a splice interval's sections, including those outside the interval's depth range, will be included with On-Splice = TRUE."
+        vlayout.addLayout(gui.HelpTextDecorator(self.wholeSpliceSection, wssHelpText))
+        
+        self.mdList = gui.FileListPanel("Measurement Data to be Spliced")
+        self.mdList.addFiles(mdPaths)
+        vlayout.addWidget(self.mdList)
+        
+#         self.outputDir = gui.SingleFilePanel("Destination Directory", fileType=gui.SingleFilePanel.Directory)
+#         vlayout.addLayout(gui.HelpTextDecorator(self.outputDir, "Directory to which spliced data will be saved with filename [measurement data file]-spliced.csv", spacing=0))
+        
+        self.logText = gui.LogTextArea(self.parent, "Log")
+        vlayout.addLayout(self.logText.layout)
+
+        self.spliceButton = QtWidgets.QPushButton("Splice Data")
+        self.spliceButton.clicked.connect(self.splice)
+        self.closeButton = QtWidgets.QPushButton("Close")
+        self.closeButton.clicked.connect(self.close)
+        self.closeButton.setDefault(True)
+        hlayout = QtWidgets.QHBoxLayout()
+        hlayout.addWidget(self.spliceButton)
+        hlayout.addWidget(self.closeButton)
+        vlayout.addLayout(hlayout)
+        
+    def splice(self):
+        if len(self.mdList.getFiles()) == 0:
+            gui.warnbox(self, "No Measurement Data", "At least one Measurement Data file is required.")
+            return
+        
+        try:
+            affinePath = self.affineFile.getPath()
+            validatePath(affinePath, "Affine")
+            
+            sitPath = self.sitFile.getPath()
+            validatePath(sitPath, "Splice Interval Table")
+            
+            mdPaths = self.mdList.getFiles()
+            for mdPath in mdPaths:
+                validatePath(mdPath, "Measurement Data")
+            
+        except InvalidPathError as err:
+            gui.warnbox(self, "Invalid Path", err.message)
+            return
+        
+        includeOffSplice = self.includeOffSplice.isChecked()
+        wholeSpliceSection = self.wholeSpliceSection.isChecked()
+        
+        self.closeButton.setEnabled(False) # prevent close of dialog
+        self.spliceButton.setText("Splicing Data...")
+        self.spliceButton.setEnabled(False)
+        
+        try:
+            logging.getLogger().addHandler(self.logText)
+            self.logText.setLevel(logging.DEBUG if self.logText.isVerbose() else logging.INFO)
+            self.logText.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+            self.logText.logText.clear()
+            for mdPath in mdPaths:
+                outPath = os.path.splitext(mdPath)[0] + "-spliced.csv"
+                feldman.exportMeasurementData(affinePath, sitPath, mdPath, outPath, includeOffSplice, wholeSpliceSection)
+        except KeyError as err:
+            gui.warnbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
+        except:
+            err = sys.exc_info()
+            gui.warnbox(self, "Process failed", "{}".format("Unhandled error {}: {}".format(err[0], err[1])))
+        finally:
+            logging.getLogger().removeHandler(self.logText)
+            self.closeButton.setEnabled(True)
+            self.spliceButton.setText("Splice Data")
+            self.spliceButton.setEnabled(True)
+
+    def installPrefs(self):
+        geom = self.parent.prefs.get("spliceMeasurementDataWindowGeometry", None)
+        if geom is not None:
+            self.setGeometry(geom)
+     
+    def savePrefs(self):
+        self.parent.prefs.set("spliceMeasurementDataWindowGeometry", self.geometry())
+
+    def closeEvent(self, event):
+        self.savePrefs()
+        self.accept()    
 
 
 if __name__ == '__main__':

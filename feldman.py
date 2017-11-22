@@ -230,7 +230,11 @@ def _spliceShiftToAffine(spliceShift, gap):
 # - includeOffSplice: if True, all off-splice rows in mdPath will be included in export with 'On-Splice' value = FALSE 
 # - wholeSpliceSection: if True, all rows in all sections included in a splice interval will be exported as 'On-Splice' 
 def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSplice=True, wholeSpliceSection=False):
-    log.info("--- Exporting Measurement Data ---")
+    log.info("--- Splicing Measurement Data ---")
+    log.info("{}".format(datetime.now()))
+    log.info("Using Affine Table {}".format(affinePath))
+    log.info("Using Splice Interval Table {}".format(sitPath))
+    log.info("Options: includeOffSplice = {}, wholeSpliceSection = {}".format(includeOffSplice, wholeSpliceSection))
     
     affine = aff.AffineTable.createWithFile(affinePath)
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
@@ -304,6 +308,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         exportdf = exportdf.drop("Hole", axis=1)
    
     ti.writeToFile(exportdf, exportPath)
+    log.info("Wrote spliced data to {}".format(exportPath))
 
 # rename and add columns in spliced measurement data per LacCore requirements
 def _prepSplicedRowsForExport(dataframe, rows, offset, onSplice):
@@ -446,9 +451,9 @@ def appendDate(text):
 def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False, manualCorrelationPath=None):
     log.info("--- Converting Sparse Splice to Affine and SIT ---")
     log.info("{}".format(datetime.now()))
-    log.debug("Using Section Summary {}".format(secSummPath))
-    log.debug("Using Sparse Splice {}".format(sparsePath))
-    log.debug("Options: Use Scaled Depths = {}, Lazy Append = {}, Manual Correlation File = {}".format(useScaledDepths, lazyAppend, manualCorrelationPath))
+    log.info("Using Section Summary {}".format(secSummPath))
+    log.info("Using Sparse Splice {}".format(sparsePath))
+    log.info("Options: Use Scaled Depths = {}, Lazy Append = {}, Manual Correlation File = {}".format(useScaledDepths, lazyAppend, manualCorrelationPath))
     
     ss = openSectionSummaryFile(secSummPath)
     sp = openSparseSplice(sparsePath)
