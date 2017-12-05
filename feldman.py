@@ -271,32 +271,36 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
     
     log.info("Total spliced rows: {}".format(rowcount))
 
-    totalOffSplice = 0
+    totalOffSpliceWritten = 0
     nonsprows = []
     if includeOffSplice:    
         osr = md.df[~(md.df.index.isin(onSpliceDF.index))] # off-splice rows
-        log.info("Total off-splice rows: {}".format(len(osr.index)))
-        print affine.dataframe.dtypes
-        print osr.dtypes
+        totalOffSplice = len(osr.index)
+        log.info("Total off-splice rows: {}".format(totalOffSplice))
+        #print affine.dataframe.dtypes
+        #print osr.dtypes
         
         # I think iterating over all rows in the affine table, finding
         # matching rows, and setting their offsets should be faster than iterating
         # over all rows in offSpliceRows and finding/setting the affine of each?
         for ar in affine.allRows():
             shiftedRows = osr[(osr.Site == ar.site) & (osr.Hole == ar.hole) & (osr.Core == ar.core)]
-            log.info("   found {} off-splice rows for affine row {}".format(len(shiftedRows.index), ar))
+            log.debug("   found {} off-splice rows for affine row {}".format(len(shiftedRows.index), ar))
             
             _prepSplicedRowsForExport(md.df, shiftedRows, ar.cumOffset, onSplice=False)
             sprows.append(shiftedRows)
             nonsprows.append(shiftedRows)
             
-            totalOffSplice += len(shiftedRows)
+            totalOffSpliceWritten += len(shiftedRows)
             
-        log.info("Total off-splice rows to be written: {}".format(totalOffSplice))
+        log.info("Total off-splice rows included in export: {}".format(totalOffSpliceWritten))
         
-        #unwritten = osr[~(osr.index.isin(pandas.concat(nonsprows).index))] # rows that still haven't been written!
-        #log.info("Rows remaining unwritten: {}".format(len(unwritten.index)))
-        #print unwritten
+        unwritten = osr[~(osr.index.isin(pandas.concat(nonsprows).index))] # rows that still haven't been written!
+        if len(unwritten.index) > 0:
+            log.warn("Of {} off-splice rows, {} were not included in the export.".format(totalOffSplice, len(unwritten.index)))
+            unwrittenPath = os.path.splitext(mdPath)[0] + "-unwritten.csv"
+            log.warn("Those rows will be saved to {}".format(unwrittenPath))
+            ti.writeToFile(unwritten, unwrittenPath)
     
     exportdf = pandas.concat(sprows)
 
@@ -344,14 +348,14 @@ class OffSpliceCore:
         return "{}{}-{}".format(self.osc.Site, self.osc.Hole, self.osc.Core)
 
 
-def gatherOffSpliceAffines(sit, secsumm, mancorr, sites):
+def gatherOffSpliceAffines(sit, secsumm, mancorr):
     # find all off-splice cores: those in section summary that are *not* in SIT
     skippedCoreCount = 0
     offSpliceCores = []
     onSpliceCores = []
     ssCores = secsumm.getCores()
     for index, row in ssCores.iterrows():
-        if row.Site not in sites: # skip section summary rows from non-site cores
+        if row.Site not in secsumm.getSites(): # skip section summary rows from non-site cores
             skippedCoreCount += 1
             continue
         if not sit.containsCore(row.Site, row.Hole, row.Core):
@@ -359,7 +363,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr, sites):
         else:
             onSpliceCores.append(row)
             
-    log.info("Found {} off-splice cores in {} section summary cores for sites {} - skipped {} non-site cores".format(len(offSpliceCores), len(ssCores), sites, skippedCoreCount))
+    log.info("Found {} off-splice cores in {} section summary cores for sites {} - skipped {} non-site cores".format(len(offSpliceCores), len(ssCores), secsumm.getSites(), skippedCoreCount))
 
     osAffineShifts = {}
     affineRows = []
@@ -462,7 +466,7 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
-    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, manualCorrelationPath, sit.getSites())
+    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, manualCorrelationPath)
     
     allAff = onSpliceAffRows + offSpliceAffRows
     allAff = fillAffineRows(allAff)

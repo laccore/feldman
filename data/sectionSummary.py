@@ -37,10 +37,14 @@ class SectionSummary:
         cores = self._findCores(site, hole, core)
         return not cores.empty
     
-    # get unique cores
-    # TODO: assumes every core has a Section 1, which may be false - ask Anders
+    # return list of unique cores
     def getCores(self):
         return self.dataframe[(self.dataframe.Section == '1')]
+    
+    # return list of unique sites
+    def getSites(self):
+        sites = self.dataframe['Site']
+        return list(set(sites))    
     
     # return depth of top of top section, bottom of bottom section
     def getCoreRange(self, site, hole, core):
