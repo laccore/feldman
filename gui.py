@@ -46,22 +46,23 @@ class FileListPanel(QtWidgets.QWidget):
         vlayout = QtWidgets.QVBoxLayout(self)
         vlayout.addWidget(LabelFactory.makeItemLabel(title))
         self.sslist = QtWidgets.QListWidget()
+        self.sslist.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         vlayout.addWidget(self.sslist)
         arlayout = QtWidgets.QHBoxLayout()
         self.addButton = QtWidgets.QPushButton("Add")
         self.addButton.clicked.connect(self.onAdd)
-        self.delButton = QtWidgets.QPushButton("Delete")
-        self.delButton.clicked.connect(self.onDel)
-        self._enableDelete()
+        self.rmButton = QtWidgets.QPushButton("Remove")
+        self.rmButton.clicked.connect(self.onRemove)
+        self._enableRemove()
         arlayout.addWidget(self.addButton)
-        arlayout.addWidget(self.delButton)
+        arlayout.addWidget(self.rmButton)
         vlayout.setSpacing(0)
         vlayout.addLayout(arlayout)
         vlayout.setContentsMargins(0,0,0,0)
         
     def addFile(self, newfile):
         self.sslist.addItem(QtWidgets.QListWidgetItem(newfile))
-        self._enableDelete()
+        self._enableRemove()
         
     def addFiles(self, filelist):
         for f in filelist:
@@ -75,13 +76,13 @@ class FileListPanel(QtWidgets.QWidget):
         for f in files[0]:
             self.addFile(f)
         
-    def onDel(self):
+    def onRemove(self):
         for sel in self.sslist.selectedItems():
             self.sslist.takeItem(self.sslist.row(sel))
-        self._enableDelete()
+        self._enableRemove()
             
-    def _enableDelete(self):
-        self.delButton.setEnabled(self.sslist.count() > 0)
+    def _enableRemove(self):
+        self.rmButton.setEnabled(self.sslist.count() > 0)
             
 
 # single file path with label and browse button
