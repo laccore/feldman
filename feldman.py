@@ -242,8 +242,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
     log.info("Loaded {} rows of data from {}".format(len(md.df.index), mdPath))
     log.debug(md.df.dtypes)
 
-    sprows = [] # rows comprising spliced dataset
-    rowcount = 0
+    onSpliceRows = []
     for index, sirow in enumerate(sit.getIntervals()):
         log.debug("Interval {}: {}".format(index, sirow))
         
@@ -264,45 +263,43 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         if len(mdrows) > 0:
             affineOffset = sirow.topMCD - sirow.topMBSF
             _prepSplicedRowsForExport(md.df, mdrows, affineOffset, onSplice=True) 
-            sprows.append(mdrows)
-            rowcount += len(mdrows)
+            onSpliceRows.append(mdrows)
         
-    onSpliceDF = pandas.concat(sprows)
-    
-    log.info("Total spliced rows: {}".format(rowcount))
+    onSpliceDF = pandas.concat(onSpliceRows)
+    log.info("Total spliced rows: {}".format(len(onSpliceDF)))
 
-    totalOffSpliceWritten = 0
-    nonsprows = []
     if includeOffSplice:    
-        osr = md.df[~(md.df.index.isin(onSpliceDF.index))] # off-splice rows
-        totalOffSplice = len(osr.index)
+        offSpliceDF = md.df[~(md.df.index.isin(onSpliceDF.index))] # off-splice rows
+        totalOffSplice = len(offSpliceDF)
         log.info("Total off-splice rows: {}".format(totalOffSplice))
         #print affine.dataframe.dtypes
-        #print osr.dtypes
+        #print offSpliceDF.dtypes
         
         # I think iterating over all rows in the affine table, finding
         # matching rows, and setting their offsets should be faster than iterating
         # over all rows in offSpliceRows and finding/setting the affine of each?
+        offSpliceRows = []
+        totalOffSpliceWritten = 0
         for ar in affine.allRows():
-            shiftedRows = osr[(osr.Site == ar.site) & (osr.Hole == ar.hole) & (osr.Core == ar.core)]
+            shiftedRows = offSpliceDF[(offSpliceDF.Site == ar.site) & (offSpliceDF.Hole == ar.hole) & (offSpliceDF.Core == ar.core)]
             log.debug("   found {} off-splice rows for affine row {}".format(len(shiftedRows.index), ar))
             
             _prepSplicedRowsForExport(md.df, shiftedRows, ar.cumOffset, onSplice=False)
-            sprows.append(shiftedRows)
-            nonsprows.append(shiftedRows)
+            onSpliceRows.append(shiftedRows)
+            offSpliceRows.append(shiftedRows)
             
             totalOffSpliceWritten += len(shiftedRows)
             
         log.info("Total off-splice rows included in export: {}".format(totalOffSpliceWritten))
         
-        unwritten = osr[~(osr.index.isin(pandas.concat(nonsprows).index))] # rows that still haven't been written!
+        unwritten = offSpliceDF[~(offSpliceDF.index.isin(pandas.concat(offSpliceRows).index))] # rows that still haven't been written!
         if len(unwritten.index) > 0:
-            log.warn("Of {} off-splice rows, {} were not included in the export.".format(totalOffSplice, len(unwritten.index)))
+            log.warn("Of {} off-splice rows, {} were not included in the export.".format(totalOffSplice, len(unwritten)))
             unwrittenPath = os.path.splitext(mdPath)[0] + "-unwritten.csv"
             log.warn("Those rows will be saved to {}".format(unwrittenPath))
             ti.writeToFile(unwritten, unwrittenPath)
     
-    exportdf = pandas.concat(sprows)
+    exportdf = pandas.concat(onSpliceRows)
 
     # TODO: clean up LacCore-specific tweaks to tabular data - pre-processing is in
     # MeasurementData, post-processing is scattered about in this file
