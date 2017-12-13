@@ -4,13 +4,15 @@ Created on Jul 30, 2017
 @author: bgrivna
 '''
 
-import os, sys, user, logging
+import os, sys, user, logging, traceback
 
 from PyQt5 import QtWidgets
 
 import feldman
 import gui
 import prefs
+#import data.measurement as meas
+import tabularImport
 
 class InvalidPathError(Exception):
     pass
@@ -19,6 +21,11 @@ class InvalidPathError(Exception):
 def validatePath(path, filetype):
     if not os.path.exists(path):
         raise InvalidPathError("{} file '{}' does not exist".format(filetype, path))
+    
+def getFloatCols(filepath):
+    df = tabularImport.readHeaders(filepath)
+    cols = [c for c in df.columns if df[c].dtype == 'float64']
+    return cols
 
 class MainWindow(QtWidgets.QWidget):
     def __init__(self, app):
@@ -34,11 +41,11 @@ class MainWindow(QtWidgets.QWidget):
         self.secSummFile = gui.SingleFilePanel("Section Summary")
         self.affineFile = gui.SingleFilePanel("Affine Table")
         self.sitFile = gui.SingleFilePanel("Splice Interval Table")
-        self.mdList = gui.FileListPanel("Measurement Data")
+        #self.mdList = gui.FileTablePanel("Measurement Data", getFloatCols)
         vlayout.addWidget(self.secSummFile)
         vlayout.addWidget(self.affineFile)
         vlayout.addWidget(self.sitFile)
-        vlayout.addWidget(self.mdList)
+        #vlayout.addWidget(self.mdList)
         
         self.sparseToSitButton = QtWidgets.QPushButton("Convert Sparse Splice to SIT")
         self.sparseToSitButton.clicked.connect(self.sparseToSit)
@@ -58,9 +65,9 @@ class MainWindow(QtWidgets.QWidget):
         self.secSummFile.setPath(self.prefs.get("lastSectionSummaryPath"))
         self.affineFile.setPath(self.prefs.get("lastAffinePath"))
         self.sitFile.setPath(self.prefs.get("lastSITPath"))
-        mdList = self.prefs.get("lastMeasurementDataPathsList", [])
-        for md in mdList:
-            self.mdList.addFile(md)
+#         mdList = self.prefs.get("lastMeasurementDataPathsList", [])
+#         for md in mdList:
+#             self.mdList.addFile(md)
         geom = self.prefs.get("windowGeometry", None)
         if geom is not None:
             self.setGeometry(geom)
@@ -69,7 +76,7 @@ class MainWindow(QtWidgets.QWidget):
         self.prefs.set("lastSectionSummaryPath", self.secSummFile.getPath())
         self.prefs.set("lastAffinePath", self.affineFile.getPath())
         self.prefs.set("lastSITPath", self.sitFile.getPath())
-        self.prefs.set("lastMeasurementDataPathsList", self.mdList.getFiles())
+        #self.prefs.set("lastMeasurementDataPathsList", self.mdList.getFiles())
         self.prefs.set("windowGeometry", self.geometry())
         self.prefs.write()
         
@@ -88,7 +95,7 @@ class MainWindow(QtWidgets.QWidget):
                 self.sitFile.setPath(dlg.sitOutPath)
                 
     def spliceData(self):
-        dlg = SpliceMeasurementDataDialog(self, self.affineFile.getPath(), self.sitFile.getPath(), self.mdList.getFiles())
+        dlg = SpliceMeasurementDataDialog(self, self.affineFile.getPath(), self.sitFile.getPath())#, self.mdList.getFiles())
         dlg.exec_()# == QtWidgets.QDialog.Accepted
                 
     def warnbox(self, title, message):
@@ -124,7 +131,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
 
         self.useScaledDepths = QtWidgets.QCheckBox("Use Scaled Depths")
         self.lazyAppend = QtWidgets.QCheckBox("Lazy Append")
-        vlayout.addLayout(gui.HelpTextDecorator(self.useScaledDepths, "Use section summary's scaled depths to map section depth to total depth."))
+        vlayout.addLayout(gui.HelpTextDecorator(self.useScaledDepths, "Use section summary's scaled depths to map section depth to total depth. Unscaled depths are the default."))
         vlayout.addLayout(gui.HelpTextDecorator(self.lazyAppend, "Always use previous core's affine shift for the current APPEND core operation."))
         
         self.affineOutFile = gui.SingleFilePanel("Affine Table", fileType=gui.SingleFilePanel.SaveFile)
@@ -195,6 +202,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         except:
             err = sys.exc_info()
             gui.warnbox(self, "Process failed", "{}".format("Unhandled error {}: {}".format(err[0], err[1])))
+            logging.error(traceback.format_exc()) # TEST ME
         finally:
             logging.getLogger().removeHandler(self.logText)
             self.closeButton.setEnabled(True)
@@ -207,15 +215,15 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
 
 
 class SpliceMeasurementDataDialog(QtWidgets.QDialog):
-    def __init__(self, parent, affinePath, sitPath, mdPaths):
+    def __init__(self, parent, affinePath, sitPath):#, mdPaths):
         QtWidgets.QDialog.__init__(self, parent)
         
         self.parent = parent
         
-        self.initGUI(affinePath, sitPath, mdPaths)
+        self.initGUI(affinePath, sitPath)#, mdPaths)
         self.installPrefs()
         
-    def initGUI(self, affinePath, sitPath, mdPaths):
+    def initGUI(self, affinePath, sitPath):#, mdPaths):
         self.setWindowTitle("Splice Measurement Data")
         vlayout = QtWidgets.QVBoxLayout(self)
         vlayout.setSpacing(20)
@@ -227,16 +235,16 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
         vlayout.addLayout(gui.HelpTextDecorator(self.affineFile, "Affine shifts to apply to data. Should correspond to applied splice.", spacing=0))
         vlayout.addLayout(gui.HelpTextDecorator(self.sitFile, "Splice to apply to data.", spacing=0))
         
-        self.includeOffSplice = QtWidgets.QCheckBox("Include Off-Splice Data")
-        iosHelpText = "All off-splice rows will be included in spliced data with On-Splice = FALSE."
-        vlayout.addLayout(gui.HelpTextDecorator(self.includeOffSplice, iosHelpText))
+#         self.includeOffSplice = QtWidgets.QCheckBox("Include Off-Splice Data")
+#         iosHelpText = "All off-splice rows will be included in spliced data with On-Splice = FALSE."
+#         vlayout.addLayout(gui.HelpTextDecorator(self.includeOffSplice, iosHelpText))
+#         
+#         self.wholeSpliceSection = QtWidgets.QCheckBox("Whole Splice Sections")
+#         wssHelpText = "All rows in a splice interval's sections, including those outside the interval's depth range, will be included with On-Splice = TRUE."
+#         vlayout.addLayout(gui.HelpTextDecorator(self.wholeSpliceSection, wssHelpText))
         
-        self.wholeSpliceSection = QtWidgets.QCheckBox("Whole Splice Sections")
-        wssHelpText = "All rows in a splice interval's sections, including those outside the interval's depth range, will be included with On-Splice = TRUE."
-        vlayout.addLayout(gui.HelpTextDecorator(self.wholeSpliceSection, wssHelpText))
-        
-        self.mdList = gui.FileListPanel("Measurement Data to be Spliced")
-        self.mdList.addFiles(mdPaths)
+        self.mdList = gui.FileTablePanel("Measurement Data to be Spliced", getFloatCols)
+        #self.mdList.addFiles(mdPaths)
         vlayout.addWidget(self.mdList)
         
 #         self.outputDir = gui.SingleFilePanel("Destination Directory", fileType=gui.SingleFilePanel.Directory)
@@ -267,16 +275,16 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             sitPath = self.sitFile.getPath()
             validatePath(sitPath, "Splice Interval Table")
             
-            mdPaths = self.mdList.getFiles()
-            for mdPath in mdPaths:
-                validatePath(mdPath, "Measurement Data")
+            mdPathsAndOpts = self.mdList.getFiles()
+#             for mdPath in mdPaths:
+#                 validatePath(mdPath, "Measurement Data")
             
         except InvalidPathError as err:
             gui.warnbox(self, "Invalid Path", err.message)
             return
         
-        includeOffSplice = self.includeOffSplice.isChecked()
-        wholeSpliceSection = self.wholeSpliceSection.isChecked()
+#         includeOffSplice = self.includeOffSplice.isChecked()
+#         wholeSpliceSection = self.wholeSpliceSection.isChecked()
         
         self.closeButton.setEnabled(False) # prevent close of dialog
         self.spliceButton.setText("Splicing Data...")
@@ -287,9 +295,9 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             self.logText.setLevel(logging.DEBUG if self.logText.isVerbose() else logging.INFO)
             self.logText.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
             self.logText.logText.clear()
-            for mdPath in mdPaths:
+            for mdPath, depthColumn, includeOffSplice, wholeSpliceSection in mdPathsAndOpts:
                 outPath = os.path.splitext(mdPath)[0] + "-spliced.csv"
-                feldman.exportMeasurementData(affinePath, sitPath, mdPath, outPath, includeOffSplice, wholeSpliceSection)
+                feldman.exportMeasurementData(affinePath, sitPath, mdPath, outPath, includeOffSplice, wholeSpliceSection, depthColumn)
         except KeyError as err:
             gui.warnbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
         except:

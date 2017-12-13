@@ -8,7 +8,7 @@ Qt GUI elements
 
 import logging, os, platform
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 
 def warnbox(parent, title="Warning", message=""):
     QtWidgets.QMessageBox.warning(parent, title, message)
@@ -43,6 +43,9 @@ def chooseSaveFile(parent, path=""):
 class FileListPanel(QtWidgets.QWidget):
     def __init__(self, title):
         QtWidgets.QWidget.__init__(self)
+        self.initUI(title)
+        
+    def initUI(self, title):
         vlayout = QtWidgets.QVBoxLayout(self)
         vlayout.addWidget(LabelFactory.makeItemLabel(title))
         self.sslist = QtWidgets.QListWidget()
@@ -83,7 +86,111 @@ class FileListPanel(QtWidgets.QWidget):
             
     def _enableRemove(self):
         self.rmButton.setEnabled(self.sslist.count() > 0)
+
+
+class FileTablePanel(QtWidgets.QWidget):
+    def __init__(self, title, depthColumnsProvider):
+        QtWidgets.QWidget.__init__(self)
+        self.initUI(title)
+        self.count = 0
+        self.depthColumnsProvider = depthColumnsProvider
+
+    def initUI(self, title):
+        vlayout = QtWidgets.QVBoxLayout(self)
+        vlayout.addWidget(LabelFactory.makeItemLabel(title))
+        self.table = QtWidgets.QTableWidget(0, 4)
+        self.table.setHorizontalHeaderLabels(["File", "Depth Column", "Off Splice", "Whole Section Splice"])
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)        
+        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
+        self.table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.table.setShowGrid(False)
+        self.table.verticalHeader().setVisible(False)
+        vlayout.addWidget(self.table)
+        arlayout = QtWidgets.QHBoxLayout()
+        self.addButton = QtWidgets.QPushButton("Add")
+        self.addButton.clicked.connect(self.onAdd)
+        self.rmButton = QtWidgets.QPushButton("Remove")
+        self.rmButton.clicked.connect(self.onRemove)
+        self._enableRemove()
+        arlayout.addWidget(self.addButton)
+        arlayout.addWidget(self.rmButton)
+        vlayout.setSpacing(0)
+        vlayout.addLayout(arlayout)
+        vlayout.setContentsMargins(0,0,0,0)
+        
+    def addFile(self, newfile):
+        self._makeRow(newfile, self.depthColumnsProvider(newfile))
+        self._enableRemove()
+        
+    def addFiles(self, filelist):
+        for f in filelist:
+            self.addFile(f)
             
+    def getFiles(self):
+        files = [self.getFileAndOptions(row) for row in range(self.table.rowCount())]
+        return files
+        
+    def getFileAndOptions(self, row):
+        path = self.table.cellWidget(row, 0).text()
+        depthColumn = self.table.cellWidget(row, 1).currentText()
+        lazyAppend = self.table.cellWidget(row, 2).isChecked()
+        wholeSectionSplice = self.table.cellWidget(row, 3).isChecked()
+        return [path, depthColumn, lazyAppend, wholeSectionSplice]
+    
+    def onAdd(self):
+        files = chooseFiles(self)
+        for f in files[0]:
+            self.addFile(f)
+        
+    def onRemove(self):
+        if self.hasSelection():
+            self.table.removeRow(self.getSelectedRow())
+            self._enableRemove()
+            
+    def getSelectedRow(self):
+        ranges = self.table.selectedRanges()
+        if len(ranges) > 0: 
+            return ranges[0].topRow()
+        return None
+        
+    def hasSelection(self):
+        return self.getSelectedRow() is not None
+            
+    def _enableRemove(self):
+        self.rmButton.setEnabled(self.table.rowCount() > 0)
+        
+    def _makeRow(self, filepath, depthColumns):
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        self.table.setCellWidget(row, 0, QtWidgets.QLabel(filepath))
+        depthCombo = QtWidgets.QComboBox()
+        depthCombo.addItems(depthColumns)
+        self.table.setCellWidget(row, 1, depthCombo) 
+        self.table.setCellWidget(row, 2, self._makeCheckboxLayout())
+        self.table.setCellWidget(row, 3, self._makeCheckboxLayout())
+        
+    def _makeCheckboxLayout(self):
+        widget = CheckboxAligner()
+        layout = QtWidgets.QHBoxLayout(widget)
+        layout.setAlignment(QtCore.Qt.AlignCenter)
+        layout.setContentsMargins(0,0,0,0)
+        widget.setLayout(layout)
+        layout.addWidget(widget.cb)
+        return widget
+    
+class CheckboxAligner(QtWidgets.QWidget):
+    def __init__(self):
+        QtWidgets.QWidget.__init__(self)
+        self.cb = QtWidgets.QCheckBox()
+        
+    def isChecked(self):
+        return self.cb.isChecked()
+        
+
 
 # single file path with label and browse button
 class SingleFilePanel(QtWidgets.QWidget):

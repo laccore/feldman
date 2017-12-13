@@ -37,6 +37,13 @@ SampleExportFormat = TabularFormat("Spliced Sample Data",
                                  ['Exp', 'Site', 'Hole', 'Core', 'Tool', 'Section'])
 
 
+# quickly grab file headers - useful for quick verification etc. before
+# loading every row which can be slow with large files 
+def readHeaders(filepath):
+    srcfile = open(filepath, 'rU')
+    dataframe = pandas.read_csv(srcfile, nrows=5, sep=None, skipinitialspace=True, engine='python')
+    return dataframe
+
 def readFile(filepath, na_values=None):
     srcfile = open(filepath, 'rU')
     # todo: 4/29/2016 add na_values = ['?','??'...] - this forced ?s to NaN, allowing

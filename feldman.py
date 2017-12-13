@@ -229,16 +229,19 @@ def _spliceShiftToAffine(spliceShift, gap):
 # todo: MeasDataDB class that hides multi-file (broken into holes) vs single-file data
 # - includeOffSplice: if True, all off-splice rows in mdPath will be included in export with 'On-Splice' value = FALSE 
 # - wholeSpliceSection: if True, all rows in all sections included in a splice interval will be exported as 'On-Splice' 
-def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSplice=True, wholeSpliceSection=False):
+def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSplice=True, wholeSpliceSection=False, depthColumn='Depth'):
     log.info("--- Splicing Measurement Data ---")
     log.info("{}".format(datetime.now()))
     log.info("Using Affine Table {}".format(affinePath))
     log.info("Using Splice Interval Table {}".format(sitPath))
+    log.info("Splicing {}".format(mdPath))
+    log.info("Using '{}' as depth column".format(depthColumn))
     log.info("Options: includeOffSplice = {}, wholeSpliceSection = {}".format(includeOffSplice, wholeSpliceSection))
     
     affine = aff.AffineTable.createWithFile(affinePath)
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
     md = meas.MeasurementData.createWithCombinedSiteHoleFile(mdPath)
+    md.df.rename(columns={depthColumn:"Depth"}, inplace=True)
     log.info("Loaded {} rows of data from {}".format(len(md.df.index), mdPath))
     log.debug(md.df.dtypes)
 
@@ -262,7 +265,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         
         if len(mdrows) > 0:
             affineOffset = sirow.topMCD - sirow.topMBSF
-            _prepSplicedRowsForExport(md.df, mdrows, affineOffset, onSplice=True) 
+            _prepSplicedRowsForExport(md.df, mdrows, depthColumn, affineOffset, onSplice=True) 
             onSpliceRows.append(mdrows)
         
     onSpliceDF = pandas.concat(onSpliceRows)
@@ -284,7 +287,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
             shiftedRows = offSpliceDF[(offSpliceDF.Site == ar.site) & (offSpliceDF.Hole == ar.hole) & (offSpliceDF.Core == ar.core)]
             log.debug("   found {} off-splice rows for affine row {}".format(len(shiftedRows.index), ar))
             
-            _prepSplicedRowsForExport(md.df, shiftedRows, ar.cumOffset, onSplice=False)
+            _prepSplicedRowsForExport(md.df, shiftedRows, depthColumn, ar.cumOffset, onSplice=False)
             onSpliceRows.append(shiftedRows)
             offSpliceRows.append(shiftedRows)
             
@@ -307,15 +310,17 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
     if "SiteHole" in exportdf: # remove added Site and Hole columns if necessary
         exportdf = exportdf.drop("Site", axis=1)
         exportdf = exportdf.drop("Hole", axis=1)
+        
+    # change Depth back to user Depth column name
    
     ti.writeToFile(exportdf, exportPath)
     log.info("Wrote spliced data to {}".format(exportPath))
 
 # rename and add columns in spliced measurement data per LacCore requirements
-def _prepSplicedRowsForExport(dataframe, rows, offset, onSplice):
-    rows.rename(columns={'Depth':'Depth, Unscaled'}, inplace=True)
+def _prepSplicedRowsForExport(dataframe, rows, depthColumn, offset, onSplice):
+    rows.rename(columns={'Depth':depthColumn}, inplace=True)
     idIndex = dataframe.columns.get_loc('SectionID') 
-    rows.insert(idIndex + 1, 'Splice Depth', pandas.Series(rows['Depth, Unscaled'] + offset))
+    rows.insert(idIndex + 1, 'Splice Depth', pandas.Series(rows[depthColumn] + offset))
     rows.insert(idIndex + 2, 'Offset', offset)
     rows.insert(idIndex + 3, 'On-Splice', str(onSplice).upper())
     
