@@ -87,7 +87,9 @@ class FileListPanel(QtWidgets.QWidget):
     def _enableRemove(self):
         self.rmButton.setEnabled(self.sslist.count() > 0)
 
-
+# table of files and options with add and remove buttons
+# hard-coded to splice export process at present
+# generalize to OptionsTable or the like
 class FileTablePanel(QtWidgets.QWidget):
     def __init__(self, title, depthColumnsProvider):
         QtWidgets.QWidget.__init__(self)
@@ -169,19 +171,24 @@ class FileTablePanel(QtWidgets.QWidget):
         self.table.setCellWidget(row, 0, QtWidgets.QLabel(filepath))
         depthCombo = QtWidgets.QComboBox()
         depthCombo.addItems(depthColumns)
-        self.table.setCellWidget(row, 1, depthCombo) 
-        self.table.setCellWidget(row, 2, self._makeCheckboxLayout())
-        self.table.setCellWidget(row, 3, self._makeCheckboxLayout())
-        
-    def _makeCheckboxLayout(self):
+        self.table.setCellWidget(row, 1, depthCombo)
+        offSpliceTip = "All off-splice rows will be included in spliced data with On-Splice = FALSE."
+        self.table.setCellWidget(row, 2, self._makeCheckboxLayout(offSpliceTip))
+        wholeSpliceTip = "All rows in a splice interval's sections, including those outside the interval's depth range, will be included with On-Splice = TRUE."
+        self.table.setCellWidget(row, 3, self._makeCheckboxLayout(wholeSpliceTip))
+    
+    # To center a checkbox in a QTableWidget cell, courtesy of stackoverflow 
+    def _makeCheckboxLayout(self, tooltip):
         widget = CheckboxAligner()
         layout = QtWidgets.QHBoxLayout(widget)
         layout.setAlignment(QtCore.Qt.AlignCenter)
         layout.setContentsMargins(0,0,0,0)
         widget.setLayout(layout)
+        widget.setToolTip(tooltip)
         layout.addWidget(widget.cb)
         return widget
     
+# simplify access to checkbox in centering layout
 class CheckboxAligner(QtWidgets.QWidget):
     def __init__(self):
         QtWidgets.QWidget.__init__(self)
