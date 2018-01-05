@@ -76,8 +76,8 @@ and can be left empty. Non-empty values will be processed.
 
 #### Manual Correlation
 A manual correlation table contains one or more rows of data, each indicating a user-defined alignment
-of an on-splice core with an off-splice core. The resulting affine shift will override the default affine
-shift for that core. Each row consists of two sets of Identity Columns, and the point on each core to be aligned.
+of an off-splice core with an on-splice core. The resulting affine shift will override the default affine
+shift for the off-splice core. Each row consists of two sets of Identity Columns, and the point on each core to be aligned.
 
 A manual correlation table must include the following columns:
 
@@ -96,3 +96,9 @@ A manual correlation table must include the following columns:
 
 
 #### Measurement Data
+A measurement data table contains one or more measurements taken at a given depth in a core section.
+
+A measurement data table must include the following columns:
+
+>		Identity Columns, including Section: see above
+>		Depth: total depth of the measurement(s) of the core section, in meters (m).
