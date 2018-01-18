@@ -13,14 +13,12 @@ import pandas
 
 from coreIdentity import parseIdentity
 
-def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=True, engine='python', mode='rU'):
+# default utf-8-sig encoding ignores Byte Order Mark (BOM)
+def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=True,
+             engine='python', mode='rU', encoding='utf-8-sig'):
     with open(filepath, mode) as srcfile:
-    # todo: 4/29/2016 add na_values = ['?','??'...] - this forced ?s to NaN, allowing
-    # depth columns to be loaded as type float64. Otherwise, manual deletion of such rows
-    # is required. Unfortunately there's no way to warn user of such rows. Pre-processing
-    # CSVs with python built-in library, then handing those rows off to pandas is one way
-    # to address this, but for now the na_values should be purt good.  
-        dataframe = pandas.read_csv(srcfile, nrows=nrows, sep=sep, skipinitialspace=skipinitialspace, na_values=na_values, engine=engine)
+        dataframe = pandas.read_csv(srcfile, nrows=nrows, sep=sep, skipinitialspace=skipinitialspace,
+                                    na_values=na_values, engine=engine, encoding=encoding)
     return dataframe
 
 # Return minimal dataframe with headers and first row of data.
