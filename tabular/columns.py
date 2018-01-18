@@ -9,11 +9,16 @@ Definitions of standard columns used in geological tabular data; related logic a
 import re
 import unittest
 
-
 class TabularDatatype:
     STRING = 0
     NUMERIC = 1
     # FLOAT?
+    
+class TabularFormat:
+    cols = [] # list of ColumnIdentitys
+    def __init__(self, name, cols):
+        self.name = name
+        self.cols = cols
 
 class ColumnIdentity:
     def __init__(self, name, desc, synonyms, datatype, unit=""):
@@ -31,7 +36,9 @@ class ColumnIdentity:
     
     def __repr__(self):
         return "cid:" + self.name
-    
+
+# Column whose name and data is the combination of two or more columns,
+# most commonly SiteHole, which match()es on 'Site' or 'Hole'
 class CompoundColumnIdentity(ColumnIdentity):
     def match(self, colname):
         return las(colname) in [las(name) for name in self.names()]
@@ -60,7 +67,7 @@ TopDepthScaledCol = ColumnIdentity("TopDepthScaled", "Top drilled depth of a cor
 BotDepthScaledCol = ColumnIdentity("BottomDepthScaled", "Bottom drilled depth of a core, scaled (CSF-B)", [], TabularDatatype.NUMERIC, 'm')
 CuratedLengthCol = ColumnIdentity("CuratedLength", "Length of core or section as measured post-extraction", [], TabularDatatype.NUMERIC, 'm')
 
-SectionSummaryFormat = StandardIdentityColumns + [TopDepthCol, BotDepthCol, TopDepthScaledCol, BotDepthScaledCol, CuratedLengthCol]
+SectionSummaryColumns = StandardIdentityColumns + [TopDepthCol, BotDepthCol, TopDepthScaledCol, BotDepthScaledCol, CuratedLengthCol]
 
 
 def split_caps(colname):
@@ -86,7 +93,7 @@ def map_columns(fmtcols, inputcols):
     for fc in fmtcols:
         for ic in inputcols:
             if fc.match(ic):
-                colmap[fc] = ic
+                colmap[fc.name] = ic
     return colmap
 
 # next: more tests of map_columns

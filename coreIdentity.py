@@ -40,17 +40,17 @@ class CoreIdentity:
     site = None
     hole = None
     core = None
-    coreType = None
+    tool = None
     section = None
     half = None
     
     # default to empty section and half - in many cases we only need core-level identity (e.g. affines)
-    def __init__(self, name, site, hole, core, coreType, section=None, half=None):
+    def __init__(self, name, site, hole, core, tool, section=None, half=None):
         self.name = name
         self.site = site
         self.hole = hole
         self.core = core
-        self.coreType = coreType
+        self.tool = tool
         self.section = section
         self.half = half
         
@@ -58,7 +58,7 @@ class CoreIdentity:
         rep = ""
         if self.name is not None:
             rep += self.name + "-"
-        rep += "{}{}-{}{}".format(self.site, self.hole, self.core, self.coreType)
+        rep += "{}{}-{}{}".format(self.site, self.hole, self.core, self.tool)
         if self.section is not None:
             rep += "-{}".format(self.section)
         if self.half is not None:
@@ -66,7 +66,7 @@ class CoreIdentity:
         return rep
         
 #     def __repr__(self):
-#         rep = "Name: {}\nSite: {}\nHole: {}\nCore: {}\nCoreType: {}\nSection: {}".format(self.name, self.site, self.hole, self.core, self.coreType, self.section)
+#         rep = "Name: {}\nSite: {}\nHole: {}\nCore: {}\nCoreType: {}\nSection: {}".format(self.name, self.site, self.hole, self.core, self.tool, self.section)
 #         if self.half is not None:
 #             rep += "\nHalf: {}".format(self.half)
 #         return rep
@@ -80,12 +80,12 @@ def parseIdentity(idstr):
         cct = tokens[3]
         sec = tokens[4]
         half = None
-        if len(tokens) == 6: # half - must be A (archive) or W (working)
+        if len(tokens) == 6: # half: A (archive), W (working) or WR (whole-round)
             halfToken = tokens[5]
-            if halfToken == 'A' or halfToken == 'W':
+            if halfToken == 'A' or halfToken == 'W' or halfToken == 'WR':
                 half = halfToken
             else:
-                print "Invalid half {}, expected A or W".format(halfToken)
+                print "Invalid half {}, expected A, W or WR".format(halfToken)
         
         charNumPattern = "([0-9]+)([A-Z]+)"
         sh_items = re.match(charNumPattern, sh)
@@ -96,11 +96,10 @@ def parseIdentity(idstr):
         cct_items = re.match(charNumPattern, cct)
         if cct_items:
             core = cct_items.groups()[0]
-            coreType = cct_items.groups()[1]
+            tool = cct_items.groups()[1]
         
         name = exp + "-" + ly
-        ci = CoreIdentity(name, site, hole, core, coreType, sec, half)
-        print ci
+        ci = CoreIdentity(name, site, hole, core, tool, sec, half)
         return ci
 
 if __name__ == "__main__":
