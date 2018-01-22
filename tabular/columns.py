@@ -34,6 +34,12 @@ class ColumnIdentity:
     def match(self, colname):
         return las(colname) in [las(name) for name in self.names()]
     
+    def isString(self):
+        return self.datatype == TabularDatatype.STRING
+    
+    def isNumeric(self):
+        return self.datatype == TabularDatatype.NUMERIC
+    
     def __repr__(self):
         return "cid:" + self.name
 
