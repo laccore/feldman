@@ -55,6 +55,9 @@ def reorderColumns(dataframe, colmap, format):
     df = pandas.DataFrame(newmap, columns=format.req)
     return df
 
+"""
+Parse SectionID column in dataframe, add column for each ID component
+"""
 def splitSectionID(dataframe, sidcol='SectionID'):
     coreids = []
     for _, row in dataframe.iterrows():
@@ -73,6 +76,8 @@ def splitSectionID(dataframe, sidcol='SectionID'):
     nameValues.append(('Section', [c.section for c in coreids]))
     insert_contiguous(dataframe, sidIndex + 1, nameValues)
     
+# Insert a column into dataframe for each (column name, values) tuple in nameValuesList,
+# starting at the specified index.
 def insert_contiguous(dataframe, index, nameValuesList):
     for count, nvtup in enumerate(nameValuesList):
         dataframe.insert(index + count, nvtup[0], nvtup[1])
@@ -87,7 +92,7 @@ def isInteger(dtype):
     return dtype == numpy.int64
 
 # For each column in list cols, force pandas column dtype and convert values to object (string)
-def forceStringDatatype(cols, dataframe):
+def forceStringDatatype(dataframe, cols):
     for col in cols:
         dataframe[col] = dataframe[col].astype(object)
         dataframe[col] = dataframe[col].apply(lambda x: str(x)) # todo: if x != NaN? to avoid line below?
