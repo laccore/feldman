@@ -12,27 +12,26 @@ import unittest
 class TabularDatatype:
     STRING = 0
     NUMERIC = 1
-    # FLOAT?
+
     
 class TabularFormat:
-    cols = [] # list of ColumnIdentitys
     def __init__(self, name, cols):
         self.name = name
-        self.cols = cols
+        self.cols = cols # list of column name strings
 
 class ColumnIdentity:
-    def __init__(self, name, desc, synonyms, datatype, unit=""):
+    def __init__(self, name, desc, synonyms, datatype=TabularDatatype.STRING, unit=""):
         self.name = name # standard name
         self.desc = desc
         self.synonyms = synonyms
         self.unit = unit # expected unit e.g. 'm' or None
-        self.datatype = datatype # expected/forced datatype???
+        self.datatype = datatype # expected datatype
         
     def names(self):
         return [self.name] + self.synonyms
     
     def match(self, colname):
-        return las(colname) in [las(name) for name in self.names()]
+        return match_column(colname, self.names())
     
     def isString(self):
         return self.datatype == TabularDatatype.STRING
@@ -43,37 +42,16 @@ class ColumnIdentity:
     def __repr__(self):
         return "cid:" + self.name
 
-# Column whose name and data is the combination of two or more columns,
-# most commonly SiteHole, which match()es on 'Site' or 'Hole'
-class CompoundColumnIdentity(ColumnIdentity):
-    def match(self, colname):
-        return las(colname) in [las(name) for name in self.names()]
-    
-    def names(self):
-        return split_caps(self.name) + self.synonyms
-        
-
-# core identity elements
-ProjectCol = ColumnIdentity("Project", "Project, expedition, cruise or another high-level identifier", ["Exp", "Expedition", "Proj", "Cruise"], TabularDatatype.STRING)
-SiteCol = ColumnIdentity("Site", "Location of core collection", ["Location"], TabularDatatype.STRING)
-HoleCol = ColumnIdentity("Hole", "Penetration from which one or more cores are collected", ["Track"], TabularDatatype.STRING)
-CoreCol = ColumnIdentity("Core", "Material collected in a single drive", ["Drive"], TabularDatatype.STRING)
-ToolCol = ColumnIdentity("Tool", "Identifier of tool used to collect a core", ["Core Type", "Type"], TabularDatatype.STRING)
-SectionCol = ColumnIdentity("Section", "Subdivision of core performed post-extraction", [], TabularDatatype.STRING)
-
-shsyns = HoleCol.synonyms + SiteCol.synonyms
-SiteHoleCol = CompoundColumnIdentity("SiteHole", "Combined Site and Hole fields", shsyns, TabularDatatype.STRING)
-
-StandardIdentityColumns = [SiteCol, HoleCol, CoreCol, ToolCol, SectionCol]
-
-# common columns
-TopDepthCol = ColumnIdentity("TopDepth", "Top drilled depth of a core (CSF-A)", [], TabularDatatype.NUMERIC, 'm')
-BotDepthCol = ColumnIdentity("BottomDepth", "Bottom drilled depth of a core (CSF-A)", [], TabularDatatype.NUMERIC, 'm')
-TopDepthScaledCol = ColumnIdentity("TopDepthScaled", "Top drilled depth of a core, scaled (CSF-B)", [], TabularDatatype.NUMERIC, 'm')
-BotDepthScaledCol = ColumnIdentity("BottomDepthScaled", "Bottom drilled depth of a core, scaled (CSF-B)", [], TabularDatatype.NUMERIC, 'm')
-CuratedLengthCol = ColumnIdentity("CuratedLength", "Length of core or section as measured post-extraction", [], TabularDatatype.NUMERIC, 'm')
-
-SectionSummaryColumns = StandardIdentityColumns + [TopDepthCol, BotDepthCol, TopDepthScaledCol, BotDepthScaledCol, CuratedLengthCol]
+# # Column whose name and data is the combination of two or more columns,
+# # most commonly SiteHole, which match()es on 'Site' or 'Hole'
+# class CompoundColumnIdentity(ColumnIdentity):
+#     def match(self, colname):
+#         return match_column(colname, self.names())
+#         #return las(colname) in [las(name) for name in self.names()]
+#     
+#     def names(self):
+#         return split_caps(self.name) + self.synonyms
+#         
 
 
 def split_caps(colname):
@@ -94,6 +72,12 @@ def lowerstrip(colname):
 def las(colname):
     return lowerstrip(strip_unit(colname))
 
+# does las'd colname match any las'd column name in names?
+def match_column(colname, names):
+    return las(colname) in [las(name) for name in names]
+
+# fmtcolids - list of ColumnIdentitys required by format
+# inputcols - list of column names to be mapped to format
 def map_columns(fmtcols, inputcols):
     colmap = {}
     for fc in fmtcols:
@@ -101,10 +85,6 @@ def map_columns(fmtcols, inputcols):
             if fc.match(ic):
                 colmap[fc.name] = ic
     return colmap
-
-# next: more tests of map_columns
-# then: SiteHole "Compo[und/site] Identity" handling
-# then: hook up SectionSummary and test
 
 
 class Tests(unittest.TestCase):
@@ -132,22 +112,25 @@ class Tests(unittest.TestCase):
         self.assertTrue(las("  Column (counts/sec) () ") == 'column')
         
     def test_map_columns(self):
-        TestFormat = [ProjectCol, SiteCol, HoleCol]
+        FooCol = ColumnIdentity("Foo", "", ["Fu", "Phooey"])
+        BarCol = ColumnIdentity("Bar", "", ["Bear", "Tavern"])
+        BazCol = ColumnIdentity("Baz", "", ["Bizarre", "Boz"])
+        TestFormat = [FooCol, BarCol, BazCol]
 
-        icols = ["Project", "Site", "Hole"] # standard column names
+        icols = ["Foo", "Bar", "Baz"] # standard column names
         m = map_columns(TestFormat, icols)
         self.assertTrue(len(m) == 3)
-        icols = [" cruise ", "SITE (m)", " t rac k"] # handle synonyms, funky case, spacing, unit
+        icols = [" phooey ", "TAVERN (m)", "biz arre"] # handle synonyms, funky case, spacing, unit
         m = map_columns(TestFormat, icols)
         self.assertTrue(len(m) == 3)
         
-    def test_compound_column_id(self):
-        self.assertTrue(SiteHoleCol.match("Site"))
-        self.assertTrue(SiteHoleCol.match("Hole"))
-        self.assertTrue(SiteHoleCol.match(" site"))
-        self.assertTrue(SiteHoleCol.match(" location"))
-        self.assertTrue(SiteHoleCol.match("track"))        
-        self.assertFalse(SiteHoleCol.match("SiteHole"))        
+#     def test_compound_column_id(self):
+#         self.assertTrue(SiteHoleCol.match("Site"))
+#         self.assertTrue(SiteHoleCol.match("Hole"))
+#         self.assertTrue(SiteHoleCol.match(" site"))
+#         self.assertTrue(SiteHoleCol.match(" location"))
+#         self.assertTrue(SiteHoleCol.match("track"))        
+#         self.assertFalse(SiteHoleCol.match("SiteHole"))        
     
     def test_split_caps(self):
         self.assertTrue(split_caps("AbeBobCarl") == ["Abe", "Bob", "Carl"])

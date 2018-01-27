@@ -11,9 +11,15 @@ from operator import eq
 import unittest
 
 import pandas
+from tabular.io import createWithCSV
 import tabularImport as ti
+import tabular.columns as TC
 
-SectionSummaryFormat = ti.TabularFormat("Section Summary", 
+SectionSummaryColumns = ['Site', 'Hole', 'Core', 'Tool', 'Section', 'TopDepth', 'BottomDepth', 'CuratedLength']
+SectionSummaryFormat = TC.TabularFormat("Section Summary", SectionSummaryColumns)
+
+
+_SectionSummaryFormat = ti.TabularFormat("Section Summary", 
                                          ['Site', 'Hole', 'Core', 'CoreType', 'Section', 'TopDepth', 'BottomDepth', 'CuratedLength'],
                                          ['Site', 'Hole', 'Core', 'CoreType', 'Section'])
 
@@ -25,12 +31,7 @@ class SectionSummary:
         
     @classmethod
     def createWithFile(cls, filepath):
-        dataframe = ti.readFile(filepath, na_values=['?', '??', '???'])
-        
-        # force pandas.dtypes to "object" (string) for ID components
-        objcols = ["Site", "Hole", "Core", "CoreType", "Section"]
-        ti.forceStringDatatype(objcols, dataframe)
-        
+        dataframe = createWithCSV(filepath, SectionSummaryFormat)
         return cls(os.path.basename(filepath), dataframe)
     
     def containsCore(self, site, hole, core):

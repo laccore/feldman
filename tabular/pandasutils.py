@@ -11,7 +11,6 @@ import unittest
 import numpy
 import pandas
 
-from coreIdentity import parseIdentity
 
 # default utf-8-sig encoding ignores Byte Order Mark (BOM)
 def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=True,
@@ -55,26 +54,6 @@ def reorderColumns(dataframe, colmap, format):
     df = pandas.DataFrame(newmap, columns=format.req)
     return df
 
-"""
-Parse SectionID column in dataframe, add column for each ID component
-"""
-def splitSectionID(dataframe, sidcol='SectionID'):
-    coreids = []
-    for _, row in dataframe.iterrows():
-        coreids.append(parseIdentity(row[sidcol]))
-        
-    sidIndex = dataframe.columns.get_loc(sidcol)
-    
-    nameValues = [] # elt is tuple (column name, list of column values)
-
-    if coreids[0].name: # assume first CoreIdentity is representative
-        nameValues.append(('Name', [c.name for c in coreids]))
-    nameValues.append(('Site', [c.site for c in coreids]))
-    nameValues.append(('Hole', [c.hole for c in coreids]))
-    nameValues.append(('Core', [c.core for c in coreids]))
-    nameValues.append(('Tool', [c.tool for c in coreids]))
-    nameValues.append(('Section', [c.section for c in coreids]))
-    insert_contiguous(dataframe, sidIndex + 1, nameValues)
     
 # Insert a column into dataframe for each (column name, values) tuple in nameValuesList,
 # starting at the specified index.
@@ -113,4 +92,4 @@ class Tests(unittest.TestCase):
         self.assertTrue('CuratedLength' in hs)
         
 if __name__ == "__main__":
-    unittest.main()
+    pass
