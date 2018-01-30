@@ -22,7 +22,7 @@ BottomDepthScaled = ColumnIdentity("BottomDepthScaled", "Bottom drilled depth of
 CuratedLength = ColumnIdentity("CuratedLength", "Length of core or section as measured post-extraction", [], TabularDatatype.NUMERIC, 'm')
 Gaps = ColumnIdentity("Gaps", "Section intervals to be treated as gaps: 0+ pairs of form top1-bot1 top2-bot2...", [], TabularDatatype.STRING, 'cm', optional=True)
 
-SectionSummaryColumns = columns.StandardIdentityColumns + [TopDepth, BottomDepth, TopDepthScaled, BottomDepthScaled, CuratedLength, Gaps]
+SectionSummaryColumns = columns.SectionIdentityCols + [TopDepth, BottomDepth, TopDepthScaled, BottomDepthScaled, CuratedLength, Gaps]
 SectionSummaryFormat = TabularFormat("Section Summary", SectionSummaryColumns)
 
 

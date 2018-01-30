@@ -8,6 +8,7 @@ gun trying to get Towuti its data...
 from datetime import date, datetime
 import logging as log
 import os
+import unittest
 
 import numpy
 import pandas
@@ -17,8 +18,10 @@ import tabularImport as ti
 import data.affine as aff
 import data.spliceInterval as si
 import data.measurement as meas
-import data.sectionSummary as ss
-import data.sparseSplice as ssplice
+from data.sectionSummary import SectionSummary
+from data.sparseSplice import SparseSplice
+
+import tabular.pandasutils as PU
 
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
@@ -30,18 +33,6 @@ def openCorrelatorFunkyFormatFile(filename):
     #print df.dtypes
     # df can now be written to a normal CSV
 
-# assumes typical CSV format (comma-delimited, no spaces)
-def openSectionSummaryFile(filename):
-    return ss.SectionSummary.createWithFile(filename)
-
-
-def openSparseSplice(filename):
-    splice = ssplice.SparseSplice.createWithFile(filename)
-    
-    log.debug("Sparse Splice pandas datatypes: {}".format(splice.dataframe.dtypes))
-    #log.debug("string columns: {}".format(ssplice.SparseSpliceFormat.strCols))
-    
-    return splice.dataframe
 
 def openManualCorrelationFile(mcPath):
     headers = ["Site1", "Hole1", "Core1", "Tool1", "Section1", "SectionDepth1", "Site2", "Hole2", "Core2", "Tool2", "Section2", "SectionDepth2"]
@@ -86,7 +77,7 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False
 # - lazyAppend - use previous core's affine shift even if it's from a different hole
 # - useScaledDepths - convert section depths to total depth using ScaledTopDepth and ScaledBottomDepth
 #   in SectionSummary instead of (unscaled) TopDepth and BottomDepth     
-def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False):
+def convertSparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False):
     seenCores = [] # list of cores that have already been added to affine
     affineRows = [] # list of dicts, each representing a generated affine table row
     
@@ -101,18 +92,18 @@ def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useS
     gap = None
     
     # todo: create SpliceIntervalRows and return along with AffineRows
-    for index, row in secsplice.iterrows():
+    for index, row in sparse.dataframe.iterrows():
         log.debug("Interval {}".format(index + 1))
         site = row['Site']
         hole = row['Hole']
         core = row['Core']
-        top = row['Top Section']
-        topOff = row['Top Offset']
+        top = row['TopSection']
+        topOff = row['TopOffset']
         log.debug("top section = {}, top offset = {}".format(top, topOff))
         shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff, useScaledDepths)
         
-        bot = row['Bottom Section']
-        botOff = row['Bottom Offset']
+        bot = row['BottomSection']
+        botOff = row['BottomOffset']
         log.debug("bottom section = {}, bottom offset = {}".format(bot, botOff))
         shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff, useScaledDepths)
         
@@ -137,7 +128,7 @@ def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useS
                     log.debug("APPENDing {} at depth {} based on previous affine {}".format(shiftTop, shiftTop + affine, affine))
                 else: # different hole, use scaled depths to determine gap
                     prevBotScaledDepth = getOffsetDepth(secsumm, prevRow['Site'], prevRow['Hole'], prevRow['Core'],
-                                                        prevRow['Bottom Section'], prevRow['Bottom Offset'], scaledDepth=True)
+                                                        prevRow['BottomSection'], prevRow['BottomOffset'], scaledDepth=True)
                     topScaledDepth = getOffsetDepth(secsumm, site, hole, core, top, topOff, scaledDepth=True)
                     scaledGap = topScaledDepth - prevBotScaledDepth
                     if scaledGap < 0.0:
@@ -169,7 +160,7 @@ def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useS
             fixedCore = prevRow['Hole'] + prevRow['Core'] if sptype == "TIE" else ""
             fixedTieCsf = botCSFs[-1] if sptype == "TIE" else ""
             shiftedTieCsf = shiftTop if sptype == "TIE" else ""
-            affineRow = aff.AffineRow(site, hole, core, row['Core Type'], coreTop, coreTop + affine, affine, shiftType=affineShiftType,
+            affineRow = aff.AffineRow(site, hole, core, row['Tool'], coreTop, coreTop + affine, affine, shiftType=affineShiftType,
                                       fixedCore=fixedCore, fixedTieCsf=fixedTieCsf, shiftedTieCsf=shiftedTieCsf, comment="splice") 
             affineRows.append(affineRow)
         else:
@@ -192,11 +183,11 @@ def convertSparseSpliceToSIT(secsplice, secsumm, affineOutPath, sitOutPath, useS
             log.warning("{}: interval top {} at or below interval bottom {} in MBLF".format(coreid, shiftTop, shiftBot))
         
         # track splice type and (optional) gap, used to determine the next interval's depths
-        sptype = row['Splice Type']
-        gap = row['Gap (m)'] if not numpy.isnan(row['Gap (m)']) else None
+        sptype = row['SpliceType']
+        gap = row['Gap'] if not numpy.isnan(row['Gap']) else None
     
     # done parsing, create final dataframe for export
-    sitDF = secsplice.copy()
+    sitDF = sparse.dataframe.copy()
     sitDF.insert(6, 'Top Depth CSF-A', pandas.Series(topCSFs))
     sitDF.insert(7, 'Top Depth CCSF-A', pandas.Series(topCCSFs))
     sitDF.insert(10, 'Bottom Depth CSF-A', pandas.Series(botCSFs))
@@ -454,10 +445,12 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     log.info("Using Sparse Splice {}".format(sparsePath))
     log.info("Options: Use Scaled Depths = {}, Lazy Append = {}, Manual Correlation File = {}".format(useScaledDepths, lazyAppend, manualCorrelationPath))
     
-    ss = openSectionSummaryFile(secSummPath)
-    sp = openSparseSplice(sparsePath)
+    ss = SectionSummary.createWithFile(secSummPath)
+    sp = SparseSplice.createWithFile(sparsePath)
 
     onSpliceAffRows = convertSparseSpliceToSIT(sp, ss, affineOutPath, sitOutPath, useScaledDepths, lazyAppend)
+    
+    return
     
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
@@ -475,28 +468,36 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     
     log.info("Conversion complete.")
 
-# sspath - path to Section Summary with gap data in separate columns
-# Output a list of space-delimited gaps of form [gap top]-[gap bottom]
-# for each section, including sections with no gaps so data aligns with
-# source Section Summary  
-def convertSSGapColumnsToSingle(sspath):
-    mergedGaps = []
-    ss = ti.readFile(sspath)
-    for index, row in ss.iterrows():
-        gaps = []
-        for gapNum in range(5):
-            tcol = "Gap {} T".format(gapNum + 1)
-            bcol = "Gap {} B".format(gapNum + 1)
-            if not numpy.isnan(row[tcol]) and not numpy.isnan(row[bcol]):
-                gaps.append(str(row[tcol]) + "-" + str(row[bcol]))
-        mergedGaps.append(' '.join(gaps))
-        
-    for mg in mergedGaps:
-        print mg
-   
+
+class Test(unittest.TestCase):
+    def test_sparse_to_sit(self):
+        sparsePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_SparseSpliceTable_20161117.csv"
+        secsummPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP Section Summary 20161117.csv"
+        affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestAffine.csv"
+        splicePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestSplice.csv"
+        convertSparseSplice(secsummPath, sparsePath, affinePath, splicePath)
+        #affine = PU.readFile(affinePath) # TODO: using readFile until affine and SIT finish flex column conversion
+        sit = PU.readFile(splicePath)
+        #self.assertTrue(len(affine.dataframe) == 273)
+        self.assertTrue(len(sit) == 105)
+    
+    def test_splice_measurement(self):
+        pass
 
 if __name__ == "__main__":
-    log.basicConfig(level=log.DEBUG)
+    unittest.main()
+#     log.basicConfig(level=log.DEBUG)
+# 
+#     # splice measurement data - TDP Site 2
+#     basePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/January 2018/"
+#     paleoPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/January 2018/TOW15-1F-pmag/TOW15-MAG-{}RM_split.csv"    
+#     paleoFiles = ['A', 'I', 'N']
+#     for mdPath in [paleoPath.format(paleoFile) for paleoFile in paleoFiles]:
+#         path, ext = os.path.splitext(mdPath)
+#         affinePath = basePath + "TDP_Site1_AffineTable_20161130.csv"
+#         splicePath = basePath + "TDP_Site1_SpliceTable_20161130.csv"
+#         exportPath = path + "_spliced" + ext
+#         exportMeasurementData(affinePath, splicePath, mdPath, exportPath, includeOffSplice=False, depthColumn="ICD mblf T")
 
     # convert sparse splice to SIT    
 #     ssPath = "[section summary path]"

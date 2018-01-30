@@ -5,15 +5,20 @@ Created on Apr 20, 2017
 '''
 
 
+import math
 import os
+import unittest
 
-import tabularImport as ti
+from tabular.io import createWithCSV, FormatError
+from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
+import tabular.pandasutils as PU
+from columns import namesToIds, CoreIdentityCols
 
-#import pandas
+Gap = ColumnIdentity("Gap", "Space added before an APPEND of the next interval", [], TabularDatatype.NUMERIC, 'm', optional=True)
+SpliceType = ColumnIdentity("SpliceType", "Type of splice operation: TIE or APPEND", [])
 
-SparseSpliceFormat = ti.TabularFormat("Sparse Splice", 
-                                         ['Site', 'Hole', 'Core', 'Core Type', 'Top Section', 'Top Offset', 'Bottom Section', 'Bottom Offset', 'Splice Type', 'Gap'],
-                                         ['Site', 'Hole', 'Core', 'Core Type', 'Top Section', 'Bottom Section', 'Splice Type'])
+SparseSpliceColumns = CoreIdentityCols + namesToIds(['TopSection', 'TopOffset', 'BottomSection', "BottomOffset"]) + [SpliceType, Gap] + namesToIds(['DataUsed', 'Comment'])  
+SparseSpliceFormat = TabularFormat("Sparse Splice", SparseSpliceColumns)
 
 
 class SparseSplice:
@@ -23,9 +28,22 @@ class SparseSplice:
         
     @classmethod
     def createWithFile(cls, filepath):
-        dataframe = ti.readFile(filepath, na_values=['?', '??', '???'])
-        
-        # get formatColumn to fileColumn mapping
-        
-        ti.forceStringDatatype(SparseSpliceFormat.strCols, dataframe)
+        dataframe = createWithCSV(filepath, SparseSpliceFormat)
         return cls(os.path.basename(filepath), dataframe)
+    
+    def getSites(self):
+        return list(set(self.dataframe['Site']))
+    
+    def getHoles(self):
+        return list(set(self.dataframe['Hole']))
+
+class Tests(unittest.TestCase):
+    def test_create(self):
+        ss = SparseSplice.createWithFile("../testdata/GLAD9_Site1_SparseSplice.csv")
+        self.assertTrue(len(ss.dataframe) == 58)
+        self.assertTrue(math.isnan(ss.dataframe['Gap'].iloc[0]))
+        self.assertTrue('1' in ss.getSites())
+        self.assertTrue(len(ss.getHoles()) == 3)
+        
+if __name__ == "__main__":
+    unittest.main()
