@@ -129,34 +129,7 @@ class SectionSummary:
         result = top + secDepth / 100.0 # cm to m
         #print "section depth {} in section {} = {} overall".format(secDepth, section, result)        
         return result
-    
-    ### begin experiment with more flexible query logic
-    def test(self, df, col, op, value):
-        return op(df[col], value)
-    
-    def query(self, df, tests):
-        curdf = df
-        for t in tests:
-            curdf = curdf[t]
-        return curdf
-#         if len(tests) == 1:
-#             return df[tests[0]]
-#         else:
-#             return df[numpy.logical_and(*tests)]
-    
-    def match(self, df, args):
-        tests = []
-        if 'site' in args:
-            tests.append(self.test(df, 'Site', eq, args['site']))
-        if 'hole' in args:
-            tests.append(self.test(df, 'Hole', eq, args['hole']))
-        if 'core' in args:
-            tests.append(self.test(df, 'Core', eq, args['core']))
-        if 'section' in args:
-            tests.append(self.test(df, 'Section', eq, args['section']))
-        return self.query(df, tests)
-    ### end experiment
-    
+
     def _findCores(self, site, hole, core):
         df = self.dataframe
         cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core)]
@@ -182,8 +155,35 @@ class SectionSummary:
     def _getSectionValue(self, site, hole, core, section, columnName):
         section = self._findSection(site, hole, core, section)
         return section.iloc[0][columnName]
-
     
+    ### experimental: flexible query logic
+#     def test(self, df, col, op, value):
+#         return op(df[col], value)
+#     
+#     def query(self, df, tests):
+#         curdf = df
+#         for t in tests:
+#             curdf = curdf[t]
+#         return curdf
+# #         if len(tests) == 1:
+# #             return df[tests[0]]
+# #         else:
+# #             return df[numpy.logical_and(*tests)]
+#     
+#     def match(self, df, args):
+#         tests = []
+#         if 'site' in args:
+#             tests.append(self.test(df, 'Site', eq, args['site']))
+#         if 'hole' in args:
+#             tests.append(self.test(df, 'Hole', eq, args['hole']))
+#         if 'core' in args:
+#             tests.append(self.test(df, 'Core', eq, args['core']))
+#         if 'section' in args:
+#             tests.append(self.test(df, 'Section', eq, args['section']))
+#         return self.query(df, tests)
+
+        
+# utility to convert Laccore DB gaps format to SectionSummary format    
 # sspath - path to Section Summary with gap data in separate columns named
 # Gap 1 T, Gap 1 B, Gap 2 T, Gap 2 B...
 # outpath - path to write dataframe including a column 'Gaps' with
