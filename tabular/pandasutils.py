@@ -60,6 +60,12 @@ def reorderColumns(dataframe, colmap, format):
 def insert_contiguous(dataframe, index, nameValuesList):
     for count, nvtup in enumerate(nameValuesList):
         dataframe.insert(index + count, nvtup[0], nvtup[1])
+        
+def insert_column(dataframe, index, name, valOrList):
+    dataframe.insert(index, name, valOrList)
+    
+def append_column(dataframe, name, valOrList):
+    insert_column(dataframe, len(dataframe.columns), name, valOrList)
 
 def isNumeric(dtype):
     return isFloat(dtype) or isInteger(dtype)

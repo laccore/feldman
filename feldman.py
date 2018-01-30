@@ -32,14 +32,7 @@ def openCorrelatorFunkyFormatFile(filename):
 
 # assumes typical CSV format (comma-delimited, no spaces)
 def openSectionSummaryFile(filename):
-    secsumm = ss.SectionSummary.createWithFile(filename)
-    
-    # force pandas.dtypes to "object" (string) for ID components
-    objcols = ["Site", "Hole", "Core", "CoreType", "Section"]
-    ti.forceStringDatatype(objcols, secsumm.dataframe)
-    
-    return secsumm
-    # confirm no blank/nan cells - fail to load? ignore such rows and warn user?
+    return ss.SectionSummary.createWithFile(filename)
 
 
 def openSparseSplice(filename):

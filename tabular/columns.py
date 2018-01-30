@@ -12,7 +12,6 @@ import unittest
 class TabularDatatype:
     STRING = 0
     NUMERIC = 1
-
     
 class TabularFormat:
     def __init__(self, name, cols):
@@ -20,12 +19,13 @@ class TabularFormat:
         self.cols = cols # list of column name strings
 
 class ColumnIdentity:
-    def __init__(self, name, desc, synonyms, datatype=TabularDatatype.STRING, unit=""):
+    def __init__(self, name, desc, synonyms, datatype=TabularDatatype.STRING, unit="", optional=False):
         self.name = name # standard name
         self.desc = desc
         self.synonyms = synonyms
         self.unit = unit # expected unit e.g. 'm' or None
         self.datatype = datatype # expected datatype
+        self.optional = optional
         
     def names(self):
         return [self.name] + self.synonyms
@@ -39,19 +39,11 @@ class ColumnIdentity:
     def isNumeric(self):
         return self.datatype == TabularDatatype.NUMERIC
     
+    def getDefaultValue(self):
+        return "" if self.isString() else float('nan')
+    
     def __repr__(self):
         return "cid:" + self.name
-
-# # Column whose name and data is the combination of two or more columns,
-# # most commonly SiteHole, which match()es on 'Site' or 'Hole'
-# class CompoundColumnIdentity(ColumnIdentity):
-#     def match(self, colname):
-#         return match_column(colname, self.names())
-#         #return las(colname) in [las(name) for name in self.names()]
-#     
-#     def names(self):
-#         return split_caps(self.name) + self.synonyms
-#         
 
 
 def split_caps(colname):
@@ -123,14 +115,6 @@ class Tests(unittest.TestCase):
         icols = [" phooey ", "TAVERN (m)", "biz arre"] # handle synonyms, funky case, spacing, unit
         m = map_columns(TestFormat, icols)
         self.assertTrue(len(m) == 3)
-        
-#     def test_compound_column_id(self):
-#         self.assertTrue(SiteHoleCol.match("Site"))
-#         self.assertTrue(SiteHoleCol.match("Hole"))
-#         self.assertTrue(SiteHoleCol.match(" site"))
-#         self.assertTrue(SiteHoleCol.match(" location"))
-#         self.assertTrue(SiteHoleCol.match("track"))        
-#         self.assertFalse(SiteHoleCol.match("SiteHole"))        
     
     def test_split_caps(self):
         self.assertTrue(split_caps("AbeBobCarl") == ["Abe", "Bob", "Carl"])

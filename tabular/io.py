@@ -10,9 +10,11 @@ import pandas
 
 import pandasutils as PU
 import columns as TC
-from data.columns import namesToIds # data -> laccore?
+#from data.columns import namesToIds # data -> laccore?
 from coreIdentity import parseIdentity
 
+class FormatError(Exception):
+    pass
 
 def createWithCSV(filepath, fmt):
     log.info("Creating {} with {}...".format(fmt.name, filepath))
@@ -21,10 +23,23 @@ def createWithCSV(filepath, fmt):
     # split compounds
     dataframe = splitSiteHole(dataframe)
     
-    fmtColumnIds = namesToIds(fmt.cols)
-    colmap = TC.map_columns(fmtColumnIds, list(dataframe.columns))
-    PU.renameColumns(dataframe, {v: k for k,v in colmap.iteritems()})
-    PU.forceStringDatatype(dataframe, [col.name for col in fmtColumnIds if col.isString()])
+    # map format columns to input columns
+    colmap = TC.map_columns(fmt.cols, list(dataframe.columns))
+    
+    if len(colmap) != len(fmt.cols):
+        # if required columns are missing, bail out
+        missingReq = [c.name for c in fmt.cols if not c.optional and c.name not in colmap]
+        if len(missingReq) > 0:
+            raise FormatError("Format {} requires missing columns {}".format(fmt.name, missingReq))
+        
+        # if optional columns are missing, add them and fill with column default value 
+        missingOpt = [c for c in fmt.cols if c.optional and c.name not in colmap]
+        for cid in missingOpt:
+            PU.append_column(dataframe, cid.name, cid.getDefaultValue())
+            colmap[cid.name] = cid.name
+    
+    PU.renameColumns(dataframe, {v: k for k,v in colmap.iteritems()}) # use format column names
+    PU.forceStringDatatype(dataframe, [col.name for col in fmt.cols if col.isString()])
 
     return dataframe
 
