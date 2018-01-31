@@ -15,10 +15,10 @@ import tabular.pandasutils as PU
 import columns
 
 # format-specific columns
-TopDepth = ColumnIdentity("TopDepth", "Top drilled depth of a core (CSF-A)", ["TopDepthUnscaled"], TabularDatatype.NUMERIC, 'm')
-BottomDepth = ColumnIdentity("BottomDepth", "Bottom drilled depth of a core (CSF-A)", ["BottomDepthUnscaled"], TabularDatatype.NUMERIC, 'm')
-TopDepthScaled = ColumnIdentity("TopDepthScaled", "Top drilled depth of a core, scaled (CSF-B)", [], TabularDatatype.NUMERIC, 'm')
-BottomDepthScaled = ColumnIdentity("BottomDepthScaled", "Bottom drilled depth of a core, scaled (CSF-B)", [], TabularDatatype.NUMERIC, 'm')
+TopDepth = ColumnIdentity("TopDepth", "Top drilled depth of a core (CSF-A)", ["TopDepthUnscaled", "Top Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
+BottomDepth = ColumnIdentity("BottomDepth", "Bottom drilled depth of a core (CSF-A)", ["BottomDepthUnscaled", "Bottom Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
+TopDepthScaled = ColumnIdentity("TopDepthScaled", "Top drilled depth of a core, scaled (CSF-B)", ["Top Depth CSF-B"], TabularDatatype.NUMERIC, 'm')
+BottomDepthScaled = ColumnIdentity("BottomDepthScaled", "Bottom drilled depth of a core, scaled (CSF-B)", ["Bottom Depth CSF-B"], TabularDatatype.NUMERIC, 'm')
 CuratedLength = ColumnIdentity("CuratedLength", "Length of core or section as measured post-extraction", [], TabularDatatype.NUMERIC, 'm')
 Gaps = ColumnIdentity("Gaps", "Section intervals to be treated as gaps: 0+ pairs of form top1-bot1 top2-bot2...", [], TabularDatatype.STRING, 'cm', optional=True)
 
