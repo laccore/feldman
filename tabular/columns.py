@@ -16,7 +16,10 @@ class TabularDatatype:
 class TabularFormat:
     def __init__(self, name, cols):
         self.name = name
-        self.cols = cols # list of column name strings
+        self.cols = cols # list of ColumnIdentitys
+        
+    def getColumnNames(self):
+        return [c.name for c in self.cols]
 
 class ColumnIdentity:
     def __init__(self, name, desc, synonyms, datatype=TabularDatatype.STRING, unit="", optional=False):

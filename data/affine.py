@@ -5,15 +5,29 @@ Created on May 6, 2016
 '''
 
 import os
+import unittest
 
-import tabularImport as ti
+from tabular.io import createWithCSV, FormatError
+from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
+import tabular.pandasutils as PU
+from columns import namesToIds, CoreIdentityCols
 
 
-AffineFormat = ti.TabularFormat("Affine Table",
-                             ['Site', 'Hole', 'Core', 'CoreType', 'Depth CSF (m)', 'Depth CCSF (m)', \
-                              'Offset', 'Differential Offset (m)', 'Growth Rate', 'Shift Type', \
-                              'Fixed Core', 'Fixed Tie CSF', 'Shifted Tie CSF', 'Data Used', 'Quality Comment'],
-                             ['Site', 'Hole', 'Core', 'CoreType', 'Shift Type', 'Data Used', 'Quality Comment'])
+DepthCSF = ColumnIdentity("DepthCSF", "Depth below sea floor", ["Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
+DepthCCSF = ColumnIdentity("DepthCCSF", "Composite depth below sea floor", ["Depth CCSF-A"], TabularDatatype.NUMERIC, 'm')
+Offset = ColumnIdentity("Offset", "Difference between a core's CSF-A and CCSF-A depth", ["Cumulative Offset", "Total Offset"], TabularDatatype.NUMERIC, 'm')
+DifferentialOffset = ColumnIdentity("DifferentialOffset", "Difference between offset of current core and preceding core in hole", [], TabularDatatype.NUMERIC, 'm')
+GrowthRate = ColumnIdentity("GrowthRate", "Ratio of core's CSF-A : CCSF-A depths", [], TabularDatatype.NUMERIC)
+ShiftType = ColumnIdentity("ShiftType", "Core's affine shift type: TIE, SET, REL or ANCHOR", ["Affine Type", "Shift"])
+FixedCore = ColumnIdentity("FixedCore", "For a core shifted by a TIE, the Hole + Core (e.g. B13) of the fixed core", [])
+FixedTieCSF =  ColumnIdentity("FixedTieCSF", "CSF depth of the TIE point on the fixed core", ["Fixed Tie CSF-A"], TabularDatatype.NUMERIC, 'm')
+ShiftedTieCSF = ColumnIdentity("ShiftedTieCSF", "CSF depth of the TIE point on the shifted core", ["Shifted Tie CSF-A"], TabularDatatype.NUMERIC, 'm')
+
+FormatSpecificCols = [DepthCSF, DepthCCSF, Offset, DifferentialOffset, GrowthRate, ShiftType, FixedCore, FixedTieCSF, ShiftedTieCSF]
+
+AffineColumns = CoreIdentityCols + FormatSpecificCols + namesToIds(["DataUsed", "Comment"])
+AffineFormat = TabularFormat("Affine Table", AffineColumns)
+
 
 class AffineTable:
     def __init__(self, name, dataframe):
@@ -22,35 +36,32 @@ class AffineTable:
         
     @classmethod
     def createWithFile(cls, filepath):
-        dataframe = ti.readFile(filepath)
-        ti.forceStringDatatype(ti.TabularFormat.strCols, dataframe)
+        dataframe = createWithCSV(filepath, AffineFormat)
         return cls(os.path.basename(filepath), dataframe)
     
-    def getOffset(self, site, hole, core, coreType):
+    def getOffset(self, site, hole, core, tool):
         df = self.dataframe
-        cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.CoreType == coreType)]
+        cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.Tool == tool)]
         if cores.empty:
-            print "AffineTable: Could not find core {}{}-{}{}".format(site, hole, core, coreType)
+            print "AffineTable: Could not find core {}{}-{}{}".format(site, hole, core, tool)
         elif len(cores) > 1:
-            print "AffineTable: Found multiple matches for core {}{}-{}{}".format(site, hole, core, coreType)
+            print "AffineTable: Found multiple matches for core {}{}-{}{}".format(site, hole, core, tool)
         return cores.iloc[0]['Offset']
     
     def allRows(self):
         allrows = []
-        for index, row in self.dataframe.iterrows():
+        for _, row in self.dataframe.iterrows():
             ar = AffineRow.createWithRow(row)
             allrows.append(ar)
-        #allrows = [AffineRow.createWithRow(row) for index, row in self.dataframe.iterrows()]
         return allrows
-        #for index, row in self.dataframe.iterrows():
             
 
 class AffineRow:
-    def __init__(self, site, hole, core, coreType, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', fixedCore='', fixedTieCsf='', shiftedTieCsf='', dataUsed='', comment=''):
+    def __init__(self, site, hole, core, tool, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', fixedCore='', fixedTieCsf='', shiftedTieCsf='', dataUsed='', comment=''):
         self.site = site
         self.hole = hole
         self.core = core
-        self.coreType = coreType
+        self.tool = tool
         self.csf = csf
         self.ccsf = ccsf
         self.cumOffset = cumOffset 
@@ -68,13 +79,25 @@ class AffineRow:
     def createWithRow(cls, row):
 #         if len(row) != 1:
 #             raise Exception("AffineRow can only be created from a single Pandas row, row count = {}".format(len(row)))
-        return cls(str(row['Site']), row['Hole'], str(row['Core']), row['CoreType'], row['Depth CSF (m)'], row["Depth CCSF (m)"], row['Offset'])
+        return cls(str(row['Site']), row['Hole'], str(row['Core']), row['Tool'], row['DepthCSF'], row["DepthCCSF"], row['Offset'])
         
     def asDict(self):
-        return {'Site':self.site, 'Hole':self.hole, 'Core':self.core, 'CoreType':self.coreType, 'Depth CSF (m)':self.csf,
-                'Depth CCSF (m)':self.ccsf, 'Offset':self.cumOffset, 'Differential Offset (m)':self.diffOffset,
-                'Growth Rate':self.growthRate, 'Shift Type':self.shiftType, 'Fixed Core':self.fixedCore,
-                'Fixed Tie CSF':self.fixedTieCsf, 'Shifted Tie CSF':self.shiftedTieCsf, 'Data Used':self.dataUsed, 'Quality Comment':self.comment}
+        return {'Site':self.site, 'Hole':self.hole, 'Core':self.core, 'Tool':self.tool, DepthCSF.name:self.csf,
+                DepthCCSF.name:self.ccsf, Offset.name:self.cumOffset, DifferentialOffset.name:self.diffOffset,
+                GrowthRate.name:self.growthRate, ShiftType.name:self.shiftType, FixedCore.name:self.fixedCore,
+                FixedTieCSF.name:self.fixedTieCsf, ShiftedTieCSF.name:self.shiftedTieCsf, 'DataUsed':self.dataUsed, 'Comment':self.comment}
         
     def __repr__(self):
         return "{}{}-{}{} CSF = {}, CCSF = {}, Offset = {}".format(self.site, self.hole, self.core, self.coreType, self.csf, self.ccsf, self.cumOffset)
+    
+    
+class Tests(unittest.TestCase):
+    def test_create(self):
+        ss = AffineTable.createWithFile("/Users/bgrivna/Desktop/LacCore/TDP Towuti/January 2018/TDP_Site1_AffineTable_20161130.csv")
+#         self.assertTrue(len(ss.dataframe) == 58)
+#         self.assertTrue(math.isnan(ss.dataframe['Gap'].iloc[0]))
+#         self.assertTrue('1' in ss.getSites())
+#         self.assertTrue(len(ss.getHoles()) == 3)
+        
+if __name__ == "__main__":
+    unittest.main()    

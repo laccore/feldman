@@ -73,11 +73,41 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False
     return depth
 
 
+# options: LazyAppend, UseScaledDepths, Manual Correlation File 
+def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False, manualCorrelationPath=None):
+    log.info("--- Converting Sparse Splice to Affine and SIT ---")
+    log.info("{}".format(datetime.now()))
+    log.info("Using Section Summary {}".format(secSummPath))
+    log.info("Using Sparse Splice {}".format(sparsePath))
+    log.info("Options: Use Scaled Depths = {}, Lazy Append = {}, Manual Correlation File = {}".format(useScaledDepths, lazyAppend, manualCorrelationPath))
+    
+    ss = SectionSummary.createWithFile(secSummPath)
+    sp = SparseSplice.createWithFile(sparsePath)
+
+    onSpliceAffRows = sparseSpliceToSIT(sp, ss, affineOutPath, sitOutPath, useScaledDepths, lazyAppend)
+    
+    # load just-created SIT and find affines for off-splice cores
+    sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
+    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, manualCorrelationPath)
+    
+    allAff = onSpliceAffRows + offSpliceAffRows
+    allAff = fillAffineRows(allAff)
+    
+    arDicts = [ar.asDict() for ar in allAff]
+    
+    affDF = pandas.DataFrame(arDicts, columns=aff.AffineFormat.getColumnNames())
+    log.info("writing affine table to {}".format(os.path.abspath(affineOutPath)))
+    log.debug("affine table column types:\n{}".format(affDF.dtypes))
+    affDF.to_csv(affineOutPath, index=False)
+    
+    log.info("Conversion complete.")
+
+
 # options:
 # - lazyAppend - use previous core's affine shift even if it's from a different hole
 # - useScaledDepths - convert section depths to total depth using ScaledTopDepth and ScaledBottomDepth
 #   in SectionSummary instead of (unscaled) TopDepth and BottomDepth     
-def convertSparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False):
+def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False):
     seenCores = [] # list of cores that have already been added to affine
     affineRows = [] # list of dicts, each representing a generated affine table row
     
@@ -86,7 +116,7 @@ def convertSparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScal
     botCSFs = []
     botCCSFs = []
     prevAffine = 0.0 # previous affine shift (used for APPEND shift)
-    prevBotMcd = None
+    prevBotCCSF = None
     prevRow = None # previous interval's row, data needed for inter-hole default APPEND gap method
     sptype = None
     gap = None
@@ -118,9 +148,9 @@ def convertSparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScal
             log.debug("First interval, splice type irrelevant")
         elif sptype == "APPEND":
             if gap is not None: # user-specified gap
-                gapEndDepth = prevBotMcd + gap 
+                gapEndDepth = prevBotCCSF + gap 
                 affine = gapEndDepth - shiftTop
-                log.debug("User specified gap of {}m between previous bottom ({}m) and current top ({}m), affine = {}m".format(gap, prevBotMcd, shiftTop, affine))
+                log.debug("User specified gap of {}m between previous bottom ({}m) and current top ({}m), affine = {}m".format(gap, prevBotCCSF, shiftTop, affine))
             else: # default gap
                 assert prevRow is not None
                 if hole == prevRow['Hole'] or lazyAppend: # hole hasn't changed, use same affine shift
@@ -133,21 +163,21 @@ def convertSparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScal
                     scaledGap = topScaledDepth - prevBotScaledDepth
                     if scaledGap < 0.0:
                         log.warning("Bottom of previous interval is {}m *above* top of next interval in CSF-B space".format(scaledGap))
-                    affine = (prevBotMcd - shiftTop) + scaledGap
+                    affine = (prevBotCCSF - shiftTop) + scaledGap
                     log.debug("Inter-hole APPENDing {} at depth {} to preserve scaled (CSF-B) gap of {}m".format(shiftTop, shiftTop + affine, scaledGap))
         elif sptype == "TIE":
             # affine = difference between prev bottom MCD and MBLF of current top
-            affine = prevBotMcd - shiftTop
-            log.debug("TIEing {} to previous bottom depth {}, affine shift of {}".format(shiftTop, prevBotMcd, affine))
+            affine = prevBotCCSF - shiftTop
+            log.debug("TIEing {} to previous bottom depth {}, affine shift of {}".format(shiftTop, prevBotCCSF, affine))
         else:
             log.error("Encountered unknown splice type {}, bailing out!".format(sptype))
             return
 
-        if prevBotMcd is not None and prevBotMcd > shiftTop + affine:
-            log.warning("previous interval bottom MCD {} is below current interval top MCD {}".format(prevBotMcd, shiftTop + affine))
+        if prevBotCCSF is not None and prevBotCCSF > shiftTop + affine:
+            log.warning("previous interval bottom MCD {} is below current interval top MCD {}".format(prevBotCCSF, shiftTop + affine))
             # increase affine to prevent overlap in case of APPEND - this should never happen for a TIE
             if sptype == "APPEND":
-                overlap = prevBotMcd - (shiftTop + affine)                
+                overlap = prevBotCCSF - (shiftTop + affine)                
                 affine += overlap 
                 log.warning("interval type APPEND, adjusting affine to {}m to avoid {}m overlap".format(affine, overlap))
 
@@ -174,7 +204,7 @@ def convertSparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScal
         botCCSFs.append(shiftBot + affine)
         log.debug("shifted top = {}m, bottom = {}m".format(shiftTop + affine, shiftBot + affine))
         
-        prevBotMcd = shiftBot + affine
+        prevBotCCSF = shiftBot + affine
         prevAffine = affine
         prevRow = row
         
@@ -243,12 +273,12 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         if wholeSpliceSection:
             mdrows = md.getByFullID(sirow.site, sirow.hole, sirow.core, sections)
         else:
-            mdrows = md.getByRangeFullID(sirow.topMBSF, sirow.botMBSF, sirow.site, sirow.hole, sirow.core, sections)
+            mdrows = md.getByRangeFullID(sirow.topCSF, sirow.botCSF, sirow.site, sirow.hole, sirow.core, sections)
         #print mdrows
         #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdrows), mdrows.iloc[0]['Depth'], mdrows.iloc[-1]['Depth'])
         
         if len(mdrows) > 0:
-            affineOffset = sirow.topMCD - sirow.topMBSF
+            affineOffset = sirow.topCCSF - sirow.topCSF
             _prepSplicedRowsForExport(md.df, mdrows, depthColumn, affineOffset, onSplice=True) 
             onSpliceRows.append(mdrows)
         
@@ -291,12 +321,10 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
     # TODO: clean up LacCore-specific tweaks to tabular data - pre-processing is in
     # MeasurementData, post-processing is scattered about in this file
     # including _prepSplicedRowsForExport()...
-    if "SiteHole" in exportdf: # remove added Site and Hole columns if necessary
-        exportdf = exportdf.drop("Site", axis=1)
-        exportdf = exportdf.drop("Hole", axis=1)
+#     if "SiteHole" in exportdf: # remove added Site and Hole columns if necessary
+#         exportdf = exportdf.drop("Site", axis=1)
+#         exportdf = exportdf.drop("Hole", axis=1)
         
-    # change Depth back to user Depth column name
-   
     ti.writeToFile(exportdf, exportPath)
     log.info("Wrote spliced data to {}".format(exportPath))
 
@@ -356,7 +384,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
     
     # for each of the off-splice cores:
     for osc in offSpliceCores:
-        oscid = ci.CoreIdentity("TDP-TOW15", osc.Site, osc.Hole, osc.Core, osc.CoreType)
+        oscid = ci.CoreIdentity("[Project Name]", osc.Site, osc.Hole, osc.Core, osc.Tool)
         
         mcc = None
         if mancorr is not None:
@@ -402,7 +430,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
             osAffineShifts[oscid] = offset
 
         coreTop = secsumm.getCoreTop(osc.Site, osc.Hole, osc.Core)  # use core's top for depths in affine table, not depth of TIE in splice
-        affineRow = aff.AffineRow(osc.Site, osc.Hole, osc.Core, osc.CoreType, coreTop, coreTop + offset, offset, shiftType="REL", comment="off-splice")
+        affineRow = aff.AffineRow(osc.Site, osc.Hole, osc.Core, osc.Tool, coreTop, coreTop + offset, offset, shiftType="REL", comment="off-splice")
         affineRows.append(affineRow)
         
     return affineRows
@@ -437,36 +465,6 @@ def fillAffineRows(affineRows):
 def appendDate(text):
     return text + "_{}".format(date.today().isoformat())
 
-# options: LazyAppend, UseScaledDepths, Manual Correlation File 
-def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False, manualCorrelationPath=None):
-    log.info("--- Converting Sparse Splice to Affine and SIT ---")
-    log.info("{}".format(datetime.now()))
-    log.info("Using Section Summary {}".format(secSummPath))
-    log.info("Using Sparse Splice {}".format(sparsePath))
-    log.info("Options: Use Scaled Depths = {}, Lazy Append = {}, Manual Correlation File = {}".format(useScaledDepths, lazyAppend, manualCorrelationPath))
-    
-    ss = SectionSummary.createWithFile(secSummPath)
-    sp = SparseSplice.createWithFile(sparsePath)
-
-    onSpliceAffRows = convertSparseSpliceToSIT(sp, ss, affineOutPath, sitOutPath, useScaledDepths, lazyAppend)
-    
-    return
-    
-    # load just-created SIT and find affines for off-splice cores
-    sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
-    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, manualCorrelationPath)
-    
-    allAff = onSpliceAffRows + offSpliceAffRows
-    allAff = fillAffineRows(allAff)
-    
-    arDicts = [ar.asDict() for ar in allAff]
-    
-    affDF = pandas.DataFrame(arDicts, columns=aff.AffineFormat.req)
-    log.info("writing affine table to {}".format(os.path.abspath(affineOutPath)))
-    log.debug("affine table column types:\n{}".format(affDF.dtypes))
-    affDF.to_csv(affineOutPath, index=False)
-    
-    log.info("Conversion complete.")
 
 
 class Test(unittest.TestCase):
@@ -476,9 +474,9 @@ class Test(unittest.TestCase):
         affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestAffine.csv"
         splicePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestSplice.csv"
         convertSparseSplice(secsummPath, sparsePath, affinePath, splicePath)
-        #affine = PU.readFile(affinePath) # TODO: using readFile until affine and SIT finish flex column conversion
+        affine = PU.readFile(affinePath) # TODO: using readFile until affine and SIT finish flex column conversion
         sit = PU.readFile(splicePath)
-        #self.assertTrue(len(affine.dataframe) == 273)
+        self.assertTrue(len(affine[affine.Site == 1]) == 272)
         self.assertTrue(len(sit) == 105)
     
     def test_splice_measurement(self):

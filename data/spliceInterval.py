@@ -5,47 +5,53 @@ Created on Mar 31, 2016
 '''
 
 import os
+import unittest
 
-import tabularImport as ti
-import pandas
+#import tabularImport as ti
+#import pandas
 
-# Splice Interval Table headers: 2.0.2 b8 and earlier
-# brg 1/18/2016: keeping for now, may want to convert from this format
-SITFormat_202_b8 = ti.TabularFormat("Splice Interval Table 2.0.2 b8 and earlier",
-                          ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'TopSection', 'TopOffset', \
-                           'TopDepthCSF', 'TopDepthCCSF', 'BottomSection', 'BottomOffset', 'BottomDepthCSF', \
-                           'BottomDepthCCSF', 'SpliceType', 'DataUsed', 'Comment'],
-                          ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'TopSection', 'BottomSection', 'SpliceType', 'DataUsed', 'Comment'])
+from tabular.io import createWithCSV, FormatError
+from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
+import tabular.pandasutils as PU
+from columns import namesToIds, CoreIdentityCols
 
-SITFormat = ti.TabularFormat("Splice Interval Table",
-                          ['Site', 'Hole', 'Core', 'Core Type', 'Top Section', 'Top Offset', \
-                           'Top Depth CSF-A', 'Top Depth CCSF-A', 'Bottom Section', 'Bottom Offset', 'Bottom Depth CSF-A', \
-                           'Bottom Depth CCSF-A', 'Splice Type', 'Data Used', 'Comment'],
-                          ['Site', 'Hole', 'Core', 'Core Type', 'Top Section', 'Bottom Section', 'Splice Type', 'Data Used', 'Comment'])
+
+TopDepthCSF = ColumnIdentity("TopDepthCSF", "Depth of splice interval top", ["Top Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
+TopDepthCCSF = ColumnIdentity("TopDepthCCSF", "Composite depth of splice interval top", ["Top Depth CCSF-A"], TabularDatatype.NUMERIC, 'm')
+BottomDepthCSF = ColumnIdentity("BottomDepthCSF", "Depth of splice interval bototm", ["Bottom Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
+BottomDepthCCSF = ColumnIdentity("BottomDepthCCSF", "Composite depth of splice interval bottom", ["Bottom Depth CCSF-A"], TabularDatatype.NUMERIC, 'm')
+SpliceType = ColumnIdentity("SpliceType", "Type of splice operation: TIE or APPEND", [])
+Gap = ColumnIdentity("Gap", "Space added before an APPEND of the next interval", [], TabularDatatype.NUMERIC, 'm', optional=True)
+
+
+SITColumns = CoreIdentityCols + namesToIds(['TopSection', 'TopOffset']) + [TopDepthCSF, TopDepthCCSF] + \
+    namesToIds(['BottomSection', "BottomOffset"]) + [BottomDepthCSF, BottomDepthCCSF] + \
+    [SpliceType, Gap] + namesToIds(['DataUsed', 'Comment']) 
+SITFormat = TabularFormat("Splice Interval Table", SITColumns)
 
 
 class SpliceIntervalRow:
-    def __init__(self, site, hole, core, coreType, topSection, topOffset, topMBSF, topMCD, botSection, botOffset, botMBSF, botMCD, spliceType, dataUsed, comment):
+    def __init__(self, site, hole, core, tool, topSection, topOffset, topCSF, topCCSF, botSection, botOffset, botCSF, botCCSF, spliceType, dataUsed, comment):
         self.site = site
         self.hole = hole
         self.core = core
-        self.coreType = coreType
+        self.tool = tool
         self.topSection = topSection
         self.topOffset = topOffset
-        self.topMBSF = topMBSF
-        self.topMCD = topMCD
+        self.topCSF = topCSF
+        self.topCCSF = topCCSF
         self.botSection = botSection
         self.botOffset = botOffset
-        self.botMBSF = botMBSF
-        self.botMCD = botMCD
+        self.botCSF = botCSF
+        self.botCCSF = botCCSF
         self.spliceType = spliceType
         self.dataUsed = dataUsed
         self.comment = comment
         
     def __repr__(self):
-        fmt = "{}{}-{}{} top {}@{} (mbsf={} mcd={}), bot {}@{} (mbsf={}, mcd={}), {}, {}, {}" 
-        return fmt.format(self.site, self.hole, self.core, self.coreType, self.topSection, self.topOffset, self.topMBSF, self.topMCD,
-                          self.botSection, self.botOffset, self.botMBSF, self.botMCD, self.spliceType, self.dataUsed, self.comment) 
+        fmt = "{}{}-{}{} top {}@{} (CSF={} CCSF={}), bot {}@{} (CSF={}, CCSF={}), {}, {}, {}" 
+        return fmt.format(self.site, self.hole, self.core, self.tool, self.topSection, self.topOffset, self.topCSF, self.topCCSF,
+                          self.botSection, self.botOffset, self.botCSF, self.botCCSF, self.spliceType, self.dataUsed, self.comment) 
 
 class SpliceIntervalTable:
     def __init__(self, name, dataframe):
@@ -54,8 +60,7 @@ class SpliceIntervalTable:
         
     @classmethod
     def createWithFile(cls, filepath):
-        dataframe = ti.readFile(filepath)
-        ti.forceStringDatatype(SITFormat.strCols, dataframe)
+        dataframe = createWithCSV(filepath, SITFormat)
         return cls(os.path.basename(filepath), dataframe)
     
     def getSites(self):
@@ -72,7 +77,7 @@ class SpliceIntervalTable:
     def getCoreOffset(self, site, hole, core):
         corerow = self.getCoreRow(site, hole, core)
         if corerow is not None:
-            return corerow["Top Depth CCSF-A"] - corerow["Top Depth CSF-A"]
+            return corerow["TopDepthCCSF"] - corerow["TopDepthCSF"]
         return None
     
     def containsCore(self, site, hole, core):
@@ -99,5 +104,9 @@ class SpliceIntervalTable:
         else:
             return c.iloc[0]
         
-
-    # todo: get table summary information
+class Tests(unittest.TestCase):
+    def test_create(self):
+        pass
+    
+if __name__ == "__main__":
+    unittest.main()
