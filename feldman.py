@@ -21,8 +21,8 @@ import data.measurement as meas
 from data.sectionSummary import SectionSummary
 from data.sparseSplice import SparseSplice
 
+from tabular.io import writeToCSV
 import tabular.pandasutils as PU
-
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
 def openCorrelatorFunkyFormatFile(filename):
@@ -254,8 +254,8 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
     
     affine = aff.AffineTable.createWithFile(affinePath)
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
-    md = meas.MeasurementData.createWithCombinedSiteHoleFile(mdPath)
-    md.df.rename(columns={depthColumn:"Depth"}, inplace=True)
+    md = meas.MeasurementData.createWithFile(mdPath)
+    PU.renameColumns(md.df, {depthColumn:'Depth'})
     log.info("Loaded {} rows of data from {}".format(len(md.df.index), mdPath))
     log.debug(md.df.dtypes)
 
@@ -314,27 +314,19 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
             log.warn("Of {} off-splice rows, {} were not included in the export.".format(totalOffSplice, len(unwritten)))
             unwrittenPath = os.path.splitext(mdPath)[0] + "-unwritten.csv"
             log.warn("Those rows will be saved to {}".format(unwrittenPath))
-            ti.writeToFile(unwritten, unwrittenPath)
+            writeToCSV(unwritten, unwrittenPath)
     
     exportdf = pandas.concat(onSpliceRows)
 
-    # TODO: clean up LacCore-specific tweaks to tabular data - pre-processing is in
-    # MeasurementData, post-processing is scattered about in this file
-    # including _prepSplicedRowsForExport()...
-#     if "SiteHole" in exportdf: # remove added Site and Hole columns if necessary
-#         exportdf = exportdf.drop("Site", axis=1)
-#         exportdf = exportdf.drop("Hole", axis=1)
-        
-    ti.writeToFile(exportdf, exportPath)
+    writeToCSV(exportdf, exportPath)
     log.info("Wrote spliced data to {}".format(exportPath))
 
 # rename and add columns in spliced measurement data per LacCore requirements
 def _prepSplicedRowsForExport(dataframe, rows, depthColumn, offset, onSplice):
-    rows.rename(columns={'Depth':depthColumn}, inplace=True)
-    idIndex = dataframe.columns.get_loc('SectionID') 
-    rows.insert(idIndex + 1, 'Splice Depth', pandas.Series(rows[depthColumn] + offset))
-    rows.insert(idIndex + 2, 'Offset', offset)
-    rows.insert(idIndex + 3, 'On-Splice', str(onSplice).upper())
+    PU.renameColumns(rows, {'Depth':depthColumn})
+    idIndex = dataframe.columns.get_loc('SectionID')
+    nameValuesList = [('Splice Depth', pandas.Series(rows[depthColumn] + offset)), ('Offset', offset), ('On-Splice', str(onSplice).upper())]
+    PU.insert_columns(rows, idIndex + 1, nameValuesList) 
     
 
 class ManualCorrelationTable:
@@ -469,18 +461,23 @@ def appendDate(text):
 
 class Test(unittest.TestCase):
     def test_sparse_to_sit(self):
+        # TODO: replace with testdata GLAD9 or contrived files
         sparsePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_SparseSpliceTable_20161117.csv"
         secsummPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP Section Summary 20161117.csv"
         affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestAffine.csv"
         splicePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestSplice.csv"
         convertSparseSplice(secsummPath, sparsePath, affinePath, splicePath)
-        affine = PU.readFile(affinePath) # TODO: using readFile until affine and SIT finish flex column conversion
-        sit = PU.readFile(splicePath)
-        self.assertTrue(len(affine[affine.Site == 1]) == 272)
-        self.assertTrue(len(sit) == 105)
+        affine = aff.AffineTable.createWithFile(affinePath)
+        sit = si.SpliceIntervalTable.createWithFile(splicePath)
+        self.assertTrue(len(affine.getSites()) == 3)
+        self.assertTrue(len(sit.df) == 105)
     
     def test_splice_measurement(self):
-        pass
+        affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestAffine.csv"
+        splicePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestSplice.csv"
+        measPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_XYZ_Test.csv"
+        splicedMeasPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_XYZ_Test_spliced.csv"
+        exportMeasurementData(affinePath, splicePath, measPath, splicedMeasPath, depthColumn='Depth (MBLF, unscaled)')
 
 if __name__ == "__main__":
     unittest.main()

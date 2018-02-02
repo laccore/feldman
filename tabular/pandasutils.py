@@ -57,13 +57,15 @@ def reorderColumns(dataframe, colmap, format):
     
 # Insert a column into dataframe for each (column name, values) tuple in nameValuesList,
 # starting at the specified index.
-def insert_contiguous(dataframe, index, nameValuesList):
+def insert_columns(dataframe, index, nameValuesList):
     for count, nvtup in enumerate(nameValuesList):
         dataframe.insert(index + count, nvtup[0], nvtup[1])
-        
+
+# Insert one column into dataframe at specified index 
 def insert_column(dataframe, index, name, valOrList):
     dataframe.insert(index, name, valOrList)
-    
+
+# Insert one column at end of dataframe
 def append_column(dataframe, name, valOrList):
     insert_column(dataframe, len(dataframe.columns), name, valOrList)
 

@@ -39,6 +39,9 @@ class AffineTable:
         dataframe = createWithCSV(filepath, AffineFormat)
         return cls(os.path.basename(filepath), dataframe)
     
+    def getSites(self):
+        return list(set(self.dataframe['Site']))
+    
     def getOffset(self, site, hole, core, tool):
         df = self.dataframe
         cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.Tool == tool)]
@@ -88,7 +91,7 @@ class AffineRow:
                 FixedTieCSF.name:self.fixedTieCsf, ShiftedTieCSF.name:self.shiftedTieCsf, 'DataUsed':self.dataUsed, 'Comment':self.comment}
         
     def __repr__(self):
-        return "{}{}-{}{} CSF = {}, CCSF = {}, Offset = {}".format(self.site, self.hole, self.core, self.coreType, self.csf, self.ccsf, self.cumOffset)
+        return "{}{}-{}{} CSF = {}, CCSF = {}, Offset = {}".format(self.site, self.hole, self.core, self.tool, self.csf, self.ccsf, self.cumOffset)
     
     
 class Tests(unittest.TestCase):

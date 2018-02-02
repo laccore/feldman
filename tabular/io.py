@@ -84,7 +84,7 @@ def splitSectionID(dataframe, sidcol='SectionID'):
     nameValues.append(('Core', [c.core for c in coreids]))
     nameValues.append(('Tool', [c.tool for c in coreids]))
     nameValues.append(('Section', [c.section for c in coreids]))
-    PU.insert_contiguous(dataframe, sidIndex + 1, nameValues)
+    PU.insert_columns(dataframe, sidIndex + 1, nameValues)
 
 
 # TODO: validation methods

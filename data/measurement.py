@@ -6,48 +6,30 @@ Created on Mar 31, 2016
 Routines and classes for the processing of measurement data files
 '''
 
-import tabularImport as ti
-import pandas
+#import tabularImport as ti
+#import pandas
 
-class AffineTransform:
-    def __init__(self, identity, offset):
-        self.identity = identity
-        self.offset = offset
+import os
+import unittest
 
-MeasurementFormat = ti.TabularFormat("Measurement Data",
-                                     ['Site', 'Hole', 'Core', 'Tool', 'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data'],
-                                     ['Site', 'Hole', 'Core', 'Tool', 'Section'])
+from tabular.io import createWithCSV
+from tabular.columns import TabularFormat
+from columns import SectionIdentityCols
 
-MeasurementExportFormat = ti.TabularFormat("Spliced Measurement Data",
-                                             ['Exp', 'Site', 'Hole', 'Core', 'CoreType',
-                                              'Section', 'TopOffset', 'BottomOffset', 'Depth', 'Data', 'RawDepth', 'Offset'],
-                                             ['Exp', 'Site', 'Hole', 'Core', 'CoreType', 'Section'])
+        
+MeasurementCols =  SectionIdentityCols # client is responsible for Depth column
+MeasurementFormat = TabularFormat("Measurement Data", MeasurementCols)
 
-def _splitSiteHole(dataframe):
-    mergedDF = dataframe
-    if 'SiteHole' in dataframe:
-        # split SiteHole column into separate Site and Hole columns
-        splitSiteHoleDF = dataframe.SiteHole.str.extract("(?P<Site>[0-9]+)(?P<Hole>[A-Z]+)")
-        # add those columns to original dataframe with same index
-        mergedDF = pandas.concat([dataframe, splitSiteHoleDF], axis=1, join_axes=[dataframe.index])
-    return mergedDF
 
 class MeasurementData:
-    def __init__(self, dataframe):
+    def __init__(self, name, dataframe):
+        self.name = name
         self.df = dataframe
         
     @classmethod
     def createWithFile(cls, filepath):
-        dataframe = ti.readFile(filepath)
-        ti.forceStringDatatype(MeasurementFormat.strCols, dataframe)
-        return cls(dataframe)
-    
-    @classmethod
-    def createWithCombinedSiteHoleFile(cls,filepath):
-        dataframe = ti.readFile(filepath)
-        dataframe = _splitSiteHole(dataframe)
-        ti.forceStringDatatype(MeasurementFormat.strCols, dataframe)
-        return cls(dataframe)    
+        dataframe = createWithCSV(filepath, MeasurementFormat)
+        return cls(os.path.basename(filepath), dataframe)
     
     # includes depths == mindepth or maxdepth
     def getByRange(self, mindepth, maxdepth):
@@ -69,3 +51,14 @@ class MeasurementData:
 
     def getByCore(self, core):
         return self.df[self.df.Core == core]
+    
+    
+class Tests(unittest.TestCase):
+    def test_create(self):
+        md = MeasurementData.createWithFile("../testdata/GLAD9_Site1_XRF.csv")
+        self.assertTrue('Tool' in md.df)
+        self.assertTrue(len(md.getByRange(74.0, 75.0)) == 185)
+        self.assertTrue(len(md.getByRangeAndCore(74.0, 75.0, '25')) == 84)
+        
+if __name__ == "__main__":
+    unittest.main()
