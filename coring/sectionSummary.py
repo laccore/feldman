@@ -154,6 +154,29 @@ class SectionSummary:
     def _getSectionValue(self, site, hole, core, section, columnName):
         section = self._findSection(site, hole, core, section)
         return section.iloc[0][columnName]
+
+        
+# utility to convert Laccore DB gaps format to SectionSummary format    
+# sspath - path to Section Summary with gap data in separate columns named
+# Gap 1 T, Gap 1 B, Gap 2 T, Gap 2 B...
+# outpath - path to write dataframe including a column 'Gaps' with
+# [gap top]-[gap bottom] space-delimited pairs
+# maxGapCols - number of gap columns
+def convertSSGapColumnsToSingle(sspath, outpath, maxGapCols):
+    mergedGaps = []
+    ss = PU.readFile(sspath)
+    for _, row in ss.iterrows():
+        gaps = []
+        for gapNum in range(maxGapCols):
+            tcol = "Gap {} T".format(gapNum + 1)
+            bcol = "Gap {} B".format(gapNum + 1)
+            if not math.isnan(row[tcol]) and not math.isnan(row[bcol]):
+                gaps.append(str(row[tcol]) + "-" + str(row[bcol]))
+        mergedGaps.append(' '.join(gaps))
+        
+    ss.insert(len(ss.columns), 'Gaps', mergedGaps)
+    PU.writeToFile(ss, outpath)
+    
     
     ### experimental: flexible query logic
 #    from operator import eq
@@ -181,28 +204,27 @@ class SectionSummary:
 #         if 'section' in args:
 #             tests.append(self.test(df, 'Section', eq, args['section']))
 #         return self.query(df, tests)
-
-        
-# utility to convert Laccore DB gaps format to SectionSummary format    
-# sspath - path to Section Summary with gap data in separate columns named
-# Gap 1 T, Gap 1 B, Gap 2 T, Gap 2 B...
-# outpath - path to write dataframe including a column 'Gaps' with
-# [gap top]-[gap bottom] space-delimited pairs
-# maxGapCols - number of gap columns
-def convertSSGapColumnsToSingle(sspath, outpath, maxGapCols):
-    mergedGaps = []
-    ss = PU.readFile(sspath)
-    for _, row in ss.iterrows():
-        gaps = []
-        for gapNum in range(maxGapCols):
-            tcol = "Gap {} T".format(gapNum + 1)
-            bcol = "Gap {} B".format(gapNum + 1)
-            if not math.isnan(row[tcol]) and not math.isnan(row[bcol]):
-                gaps.append(str(row[tcol]) + "-" + str(row[bcol]))
-        mergedGaps.append(' '.join(gaps))
-        
-    ss.insert(len(ss.columns), 'Gaps', mergedGaps)
-    PU.writeToFile(ss, outpath)
+# 
+# simple flex query tests pulled from old 'foo.py'
+# import time
+# from data.sectionSummary import SectionSummary
+# 
+# def time_it(f, *args):
+#     start = time.clock()
+#     f(*args)
+#     print "Elapsed time of {}: {}".format(f.__name__, (time.clock() - start) * 1000)
+# 
+# def combined(df):
+#     foodf = df[(df.Site == 1) & (df.Hole == 'A') & (df.Core == 2)]
+#     print len(foodf)
+#     return df
+#     
+# def separate(df):
+#     newdf = df[df.Site == 1]
+#     newdf = newdf[df.Hole == 'A']
+#     newdf = newdf[df.Core == 2]
+#     print len(newdf)
+#     return newdf    
 
 
 class TestSectionSummary(unittest.TestCase):    

@@ -79,6 +79,47 @@ def forceStringDatatype(dataframe, cols):
         
         # forced string conversion forces all NaN values to the string "nan" - remove these
         dataframe[col] = dataframe[col].apply(lambda x: "" if x == "nan" else x)
+        
+
+# legacy tabularImport methods - just in case
+# """ strip whitespace from dataframe cells """ 
+# def stripCells(dataframe):
+#     for c in dataframe.columns:
+#         try:
+#             dataframe[c] = dataframe[c].str.strip()
+#         except:
+#             pass
+# 
+# def destroyStrings(col, df):
+#     print "DESTROYING STRINGS"
+#     df[col] = df[col].apply(lambda x: "" if type(x) is str else x)
+#     print df[col]
+# 
+# def forceColumnFloat64(col, df):
+#     try:
+#         forcedCol = df[col].astype(numpy.float64)
+#     except ValueError:
+#         raise
+#     return forcedCol
+#         
+# def forceColumnDtype(col, df, dtype):
+#     try:
+#         forcedCol = df[col].astype(dtype)
+#     except ValueError:
+#         pass
+# 
+# def forceFloatDatatype(cols, dataframe, destroy=False):
+#     for col in cols:
+#         forcedCol = None
+#         try:
+#             forcedCol = forceColumnFloat64(col, dataframe)
+#         except ValueError:
+#             print "Couldn't convert column {} to float64 datatype".format(col)
+#             if destroy:
+#                 destroyStrings(col, dataframe)
+#                 forcedCol = forceColumnFloat64(col, dataframe)
+#         if forcedCol is not None:
+#             dataframe[col] = forcedCol
 
 
 class Tests(unittest.TestCase):
