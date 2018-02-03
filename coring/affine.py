@@ -7,9 +7,8 @@ Created on May 6, 2016
 import os
 import unittest
 
-from tabular.io import createWithCSV, FormatError
+from tabular.io import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
-import tabular.pandasutils as PU
 from columns import namesToIds, CoreIdentityCols
 
 

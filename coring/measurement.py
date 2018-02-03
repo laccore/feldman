@@ -6,9 +6,6 @@ Created on Mar 31, 2016
 Routines and classes for the processing of measurement data files
 '''
 
-#import tabularImport as ti
-#import pandas
-
 import os
 import unittest
 
@@ -17,7 +14,7 @@ from tabular.columns import TabularFormat
 from columns import SectionIdentityCols
 
         
-MeasurementCols =  SectionIdentityCols # client is responsible for Depth column
+MeasurementCols =  SectionIdentityCols # client is responsible for renaming Depth column
 MeasurementFormat = TabularFormat("Measurement Data", MeasurementCols)
 
 

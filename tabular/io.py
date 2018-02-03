@@ -10,8 +10,6 @@ import pandas
 
 import pandasutils as PU
 import columns as TC
-#from data.columns import namesToIds # data -> laccore?
-from coreIdentity import parseIdentity
 
 class FormatError(Exception):
     pass
@@ -35,7 +33,7 @@ def createWithCSV(filepath, fmt):
         # if optional columns are missing, add them and fill with column default value 
         missingOpt = [c for c in fmt.cols if c.optional and c.name not in colmap]
         for cid in missingOpt:
-            PU.append_column(dataframe, cid.name, cid.getDefaultValue())
+            PU.appendColumn(dataframe, cid.name, cid.getDefaultValue())
             colmap[cid.name] = cid.name
     
     PU.renameColumns(dataframe, {v: k for k,v in colmap.iteritems()}) # use format column names
@@ -64,27 +62,6 @@ def dropSiteHole(df):
     if "SiteHole" in df and 'Site' in df and 'Hole' in df: # remove added Site and Hole columns if necessary
         df = df.drop(["Site", 'Hole'], axis=1)
     return df
-
-"""
-Parse SectionID column in dataframe, add column for each ID component
-"""
-def splitSectionID(dataframe, sidcol='SectionID'):
-    coreids = []
-    for _, row in dataframe.iterrows():
-        coreids.append(parseIdentity(row[sidcol]))
-        
-    sidIndex = dataframe.columns.get_loc(sidcol)
-    
-    nameValues = [] # elt is tuple (column name, list of column values)
-
-    if coreids[0].name: # assume first CoreIdentity is representative
-        nameValues.append(('Name', [c.name for c in coreids]))
-    nameValues.append(('Site', [c.site for c in coreids]))
-    nameValues.append(('Hole', [c.hole for c in coreids]))
-    nameValues.append(('Core', [c.core for c in coreids]))
-    nameValues.append(('Tool', [c.tool for c in coreids]))
-    nameValues.append(('Section', [c.section for c in coreids]))
-    PU.insert_columns(dataframe, sidIndex + 1, nameValues)
 
 
 # TODO: validation methods

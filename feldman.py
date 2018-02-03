@@ -13,13 +13,12 @@ import unittest
 import numpy
 import pandas
 
-import coreIdentity as ci
-import tabularImport as ti
-import data.affine as aff
-import data.spliceInterval as si
-import data.measurement as meas
-from data.sectionSummary import SectionSummary
-from data.sparseSplice import SparseSplice
+import coring.identity as ci
+import coring.affine as aff
+import coring.spliceInterval as si
+import coring.measurement as meas
+from coring.sectionSummary import SectionSummary
+from coring.sparseSplice import SparseSplice
 
 from tabular.io import writeToCSV
 import tabular.pandasutils as PU
@@ -42,7 +41,7 @@ def openManualCorrelationFile(mcPath):
     
     objcols = ["Site1", "Hole1", "Core1", "Tool1", "Section1", "Site2", "Hole2", "Core2", "Section2", "Tool2"]
     
-    ti.forceStringDatatype(objcols, mancorr)
+    PU.forceStringDatatype(mancorr, objcols)
     
     return ManualCorrelationTable("Jim's Manual Correlation", mancorr)
     
@@ -326,7 +325,7 @@ def _prepSplicedRowsForExport(dataframe, rows, depthColumn, offset, onSplice):
     PU.renameColumns(rows, {'Depth':depthColumn})
     idIndex = dataframe.columns.get_loc('SectionID')
     nameValuesList = [('Splice Depth', pandas.Series(rows[depthColumn] + offset)), ('Offset', offset), ('On-Splice', str(onSplice).upper())]
-    PU.insert_columns(rows, idIndex + 1, nameValuesList) 
+    PU.insertColumns(rows, idIndex + 1, nameValuesList) 
     
 
 class ManualCorrelationTable:

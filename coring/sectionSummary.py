@@ -6,7 +6,6 @@ Created on May 1, 2016
 
 import math
 import os
-from operator import eq
 import unittest
 
 from tabular.io import createWithCSV, FormatError
@@ -157,6 +156,7 @@ class SectionSummary:
         return section.iloc[0][columnName]
     
     ### experimental: flexible query logic
+#    from operator import eq
 #     def test(self, df, col, op, value):
 #         return op(df[col], value)
 #     

@@ -36,38 +36,31 @@ def writeToFile(dataframe, filepath):
 def renameColumns(dataframe, colmap):
     dataframe.rename(columns=colmap, inplace=True)
 
-""" find column names in dataframe matching those required by format """
-def findFormatColumns(dataframe, format):
-    colmap = dict().fromkeys(format.req)
-    for key in colmap.keys():
-        if key in dataframe.dtypes.keys():
-            colmap[key] = dataframe.columns.get_loc(key)
-    return colmap
-
 """ returns new dataframe with columns in order specified by colmap """
-def reorderColumns(dataframe, colmap, format):
-    newmap = {}
-    for colName in colmap.keys():
-        index = colmap[colName]
-        if index is not None:
-            newmap[colName] = dataframe.icol(index)
-    df = pandas.DataFrame(newmap, columns=format.req)
-    return df
+# TODO
+# def reorderColumns(dataframe, colmap, fmt):
+#     newmap = {}
+#     for colName in colmap.keys():
+#         index = colmap[colName]
+#         if index is not None:
+#             newmap[colName] = dataframe.icol(index)
+#     df = pandas.DataFrame(newmap, columns=fmt.req)
+#     return df
 
     
 # Insert a column into dataframe for each (column name, values) tuple in nameValuesList,
 # starting at the specified index.
-def insert_columns(dataframe, index, nameValuesList):
+def insertColumns(dataframe, index, nameValuesList):
     for count, nvtup in enumerate(nameValuesList):
         dataframe.insert(index + count, nvtup[0], nvtup[1])
 
 # Insert one column into dataframe at specified index 
-def insert_column(dataframe, index, name, valOrList):
+def insertColumn(dataframe, index, name, valOrList):
     dataframe.insert(index, name, valOrList)
 
 # Insert one column at end of dataframe
-def append_column(dataframe, name, valOrList):
-    insert_column(dataframe, len(dataframe.columns), name, valOrList)
+def appendColumn(dataframe, name, valOrList):
+    insertColumn(dataframe, len(dataframe.columns), name, valOrList)
 
 def isNumeric(dtype):
     return isFloat(dtype) or isInteger(dtype)

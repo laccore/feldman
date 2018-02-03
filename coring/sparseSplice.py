@@ -9,9 +9,8 @@ import math
 import os
 import unittest
 
-from tabular.io import createWithCSV, FormatError
+from tabular.io import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
-import tabular.pandasutils as PU
 from columns import namesToIds, CoreIdentityCols
 
 Gap = ColumnIdentity("Gap", "Space added before an APPEND of the next interval", [], TabularDatatype.NUMERIC, 'm', optional=True)
