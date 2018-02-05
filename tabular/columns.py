@@ -71,6 +71,16 @@ def las(colname):
 def match_column(colname, names):
     return las(colname) in [las(name) for name in names]
 
+# return raw (non-las'd) string of first name in names matching colname
+# or None if no match is found
+def find_match(colname, names):
+    match = None
+    for name in names:
+        if las(colname) == las(name):
+            match = name
+            break
+    return match
+
 # fmtcolids - list of ColumnIdentitys required by format
 # inputcols - list of column names to be mapped to format
 def map_columns(fmtcols, inputcols):
@@ -124,6 +134,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(split_caps("abeBobcarL") == ["abe", "Bobcar", "L"])
         self.assertTrue(split_caps("noupper") == ["noupper"])
         self.assertTrue(split_caps("ABC") == ["ABC"])
+        self.assertTrue(split_caps("Abe Bob") == ["Abe", "Bob"])
         self.assertTrue(split_caps("") == [""])
         
 if __name__ == "__main__":

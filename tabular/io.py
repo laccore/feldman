@@ -51,15 +51,18 @@ def splitCompoundColumn(df, colname):
     splitPattern = "(?P<{}>[0-9]+)(?P<{}>[A-Z]+)".format(cols[0], cols[1])
     return df[colname].str.extract(splitPattern)
 
+
 # split SiteHole column into separate Site and Hole columns
 def splitSiteHole(df):
-    if 'SiteHole' in df and 'Site' not in df and 'Hole' not in df:
-        sitehole = splitCompoundColumn(df, "SiteHole")
+    shName = TC.find_match("SiteHole", list(df.columns))
+    if shName is not None and 'Site' not in df and 'Hole' not in df:
+        sitehole = splitCompoundColumn(df, shName)
         df = pandas.concat([df, sitehole], axis=1, join_axes=[df.index])
     return df
         
 def dropSiteHole(df):
-    if "SiteHole" in df and 'Site' in df and 'Hole' in df: # remove added Site and Hole columns if necessary
+    shName = TC.find_match("SiteHole", list(df.columns))
+    if shName is not None and shName in df and 'Site' in df and 'Hole' in df: # remove added Site and Hole columns if necessary
         df = df.drop(["Site", 'Hole'], axis=1)
     return df
 
