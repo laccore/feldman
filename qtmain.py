@@ -11,7 +11,7 @@ from PyQt5 import QtWidgets
 import feldman
 import gui
 import prefs
-import tabularImport
+import tabular.pandasutils as PU
 
 class InvalidPathError(Exception):
     pass
@@ -22,7 +22,7 @@ def validatePath(path, filetype):
         raise InvalidPathError("{} file '{}' does not exist".format(filetype, path))
     
 def getFloatCols(filepath):
-    df = tabularImport.readHeaders(filepath)
+    df = PU.readFileMinimal(filepath)
     cols = [c for c in df.columns if df[c].dtype == 'float64']
     return cols
 
