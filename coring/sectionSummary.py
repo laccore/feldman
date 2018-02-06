@@ -8,7 +8,7 @@ import math
 import os
 import unittest
 
-from tabular.io import createWithCSV, FormatError
+from tabular.csvio import createWithCSV, FormatError
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 import tabular.pandasutils as PU
 import columns

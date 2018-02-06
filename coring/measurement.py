@@ -9,7 +9,7 @@ Routines and classes for the processing of measurement data files
 import os
 import unittest
 
-from tabular.io import createWithCSV
+from tabular.csvio import createWithCSV
 from tabular.columns import TabularFormat
 from columns import SectionIdentityCols
 

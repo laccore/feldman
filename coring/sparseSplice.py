@@ -9,7 +9,7 @@ import math
 import os
 import unittest
 
-from tabular.io import createWithCSV
+from tabular.csvio import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 from columns import namesToIds, CoreIdentityCols
 

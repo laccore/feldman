@@ -5,6 +5,7 @@ Created on Jan 24, 2018
 '''
 
 import logging as log
+import unittest
 
 import pandas
 
@@ -36,7 +37,9 @@ def createWithCSV(filepath, fmt):
             PU.appendColumn(dataframe, cid.name, cid.getDefaultValue())
             colmap[cid.name] = cid.name
     
-    PU.renameColumns(dataframe, {v: k for k,v in colmap.iteritems()}) # use format column names
+    reverseColmap = {v: k for k,v in colmap.iteritems()}
+    PU.renameColumns(dataframe, reverseColmap) # use format column names
+    log.info("Column map: {}".format(reverseColmap))
     PU.forceStringDatatype(dataframe, [col.name for col in fmt.cols if col.isString()])
 
     return dataframe
@@ -46,20 +49,22 @@ def writeToCSV(dataframe, filepath):
     PU.writeToFile(dataframe, filepath)
 
 
+# split data of form [numeric][alphabetic] into separate columns
 def splitCompoundColumn(df, colname):
     cols = TC.split_caps(colname)
     splitPattern = "(?P<{}>[0-9]+)(?P<{}>[A-Z]+)".format(cols[0], cols[1])
     return df[colname].str.extract(splitPattern)
 
-
-# split SiteHole column into separate Site and Hole columns
+# split compound SiteHole column into separate Site and Hole columns
 def splitSiteHole(df):
     shName = TC.find_match("SiteHole", list(df.columns))
     if shName is not None and 'Site' not in df and 'Hole' not in df:
         sitehole = splitCompoundColumn(df, shName)
         df = pandas.concat([df, sitehole], axis=1, join_axes=[df.index])
+        log.info("Split {} column into Site and Hole".format(shName))
     return df
-        
+
+# remove split Site and Hole columns if they and compound SiteHole are present
 def dropSiteHole(df):
     shName = TC.find_match("SiteHole", list(df.columns))
     if shName is not None and shName in df and 'Site' in df and 'Hole' in df: # remove added Site and Hole columns if necessary
@@ -91,3 +96,25 @@ def validData(self, filepath, fmt, colmap):
             pass
     # perform format-specific validation (e.g. TopDepth >= BottomDepth for each row of a SectionSummary)
     return valid
+
+
+class Tests(unittest.TestCase):
+    def test_compound(self):
+        df = pandas.DataFrame({'SiteHole': ['1A', '2B']})
+        splitdf = splitCompoundColumn(df, 'SiteHole')
+        self.assertTrue(splitdf['Site'][0] == '1')
+        self.assertTrue(splitdf['Site'][1] == '2')
+        self.assertTrue(splitdf['Hole'][0] == 'A')
+        self.assertTrue(splitdf['Hole'][1] == 'B')
+    
+    def test_sitehole(self):
+        df = pandas.DataFrame({'Site': ['1','2'], 'Hole': ['A', 'B']})
+        self.assertTrue(len(splitSiteHole(df).columns) == 2) # no split needed
+        PU.appendColumn(df, 'SiteHole', '3C')
+        self.assertTrue(len(splitSiteHole(df).columns) == 3) # still not needed, has Site and Hole
+        df.drop(['Site', 'Hole'], axis=1)
+        self.assertTrue(len(splitSiteHole(df).columns) == 3) # Site and Hole re-added
+        self.assertTrue(len(dropSiteHole(df).columns) == 1) # Site and Hole dropped
+    
+if __name__ == "__main__":
+    unittest.main()

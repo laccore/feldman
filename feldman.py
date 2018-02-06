@@ -20,7 +20,7 @@ import coring.measurement as meas
 from coring.sectionSummary import SectionSummary
 from coring.sparseSplice import SparseSplice
 
-from tabular.io import writeToCSV
+from tabular.csvio import writeToCSV
 import tabular.pandasutils as PU
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
