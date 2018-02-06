@@ -3,7 +3,8 @@ Created on Jan 10, 2017
 
 @author: bgrivna
 
-Definitions of standard columns used in geological tabular data; related logic and tests
+Classes to describe tabular data formats, logic to map/coerce input
+tabular data to those formats based on column names
 '''
 
 import re
@@ -48,14 +49,17 @@ class ColumnIdentity:
     def __repr__(self):
         return "cid:" + self.name
 
-
+# split colname where lowercase is followed by uppercase, ignoring spaces
+# e.g. "FooBar" and "Foo Bar" both return ["Foo", "Bar"] 
 def split_caps(colname):
-    spaced = re.sub(r"([a-z])([A-Z])", r"\1 \2", colname) # aA -> a A
+    spaced = re.sub(r"([a-z])([A-Z])", r"\1 \2", colname.replace(' ', ''))
     return spaced.split(" ")
 
+# remove parenthesized substrings from colname
 def strip_unit(colname):
     return re.sub(r'\([^)]*\)', '', colname)
 
+# return contents of parenthesized substring in colname
 def find_unit(colname):
     m = re.search(r"\([^\)].*\)", colname)
     return None if m is None else m.group()[1:-1] # strip parentheses
@@ -99,6 +103,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(strip_unit("Column()") == "Column")
         self.assertTrue(strip_unit("(m)Column") == "Column")
         self.assertTrue(strip_unit("Column(crazy-units&xxx#*(&$)") == "Column")
+        self.assertTrue(strip_unit("Column (a) (b)") == "Column  ") # strip_unit does not strip spaces!
         
     def test_find_unit(self):
         self.assertTrue(find_unit("Column") is None)
@@ -135,6 +140,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(split_caps("noupper") == ["noupper"])
         self.assertTrue(split_caps("ABC") == ["ABC"])
         self.assertTrue(split_caps("Abe Bob") == ["Abe", "Bob"])
+        self.assertTrue(split_caps("Abe    Bob") == ["Abe", "Bob"])
         self.assertTrue(split_caps("") == [""])
         
 if __name__ == "__main__":
