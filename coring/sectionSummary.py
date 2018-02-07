@@ -4,6 +4,7 @@ Created on May 1, 2016
 @author: bgrivna
 '''
 
+import logging as log
 import math
 import os
 import unittest
@@ -11,7 +12,7 @@ import unittest
 from tabular.csvio import createWithCSV, FormatError
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 import tabular.pandasutils as PU
-import columns
+from columns import SectionIdentityCols
 
 # format-specific columns
 TopDepth = ColumnIdentity("TopDepth", "Top drilled depth of a core (CSF-A)", ["TopDepthUnscaled", "Top Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
@@ -21,7 +22,7 @@ BottomDepthScaled = ColumnIdentity("BottomDepthScaled", "Bottom drilled depth of
 CuratedLength = ColumnIdentity("CuratedLength", "Length of core or section as measured post-extraction", [], TabularDatatype.NUMERIC, 'm')
 Gaps = ColumnIdentity("Gaps", "Section intervals to be treated as gaps: 0+ pairs of form top1-bot1 top2-bot2...", [], TabularDatatype.STRING, 'cm', optional=True)
 
-SectionSummaryColumns = columns.SectionIdentityCols + [TopDepth, BottomDepth, TopDepthScaled, BottomDepthScaled, CuratedLength, Gaps]
+SectionSummaryColumns = SectionIdentityCols + [TopDepth, BottomDepth, TopDepthScaled, BottomDepthScaled, CuratedLength, Gaps]
 SectionSummaryFormat = TabularFormat("Section Summary", SectionSummaryColumns)
 
 
@@ -70,7 +71,7 @@ class SectionSummary:
             if mindiff is None or diff < mindiff:
                 mindiff = diff
                 closestCore = corerow
-        print "Closest core top to off-splice {}{}-{} with top MBLF = {}: on-splice {}{}-{} with top MBLF = {}, diff = {}".format(site, hole, core, searchCoreTop, closestCore.Site, closestCore.Hole, closestCore.Core, closestCore.TopDepth, mindiff)
+        log.debug("Closest core top to off-splice {}{}-{} with top MBLF = {}: on-splice {}{}-{} with top MBLF = {}, diff = {}".format(site, hole, core, searchCoreTop, closestCore.Site, closestCore.Hole, closestCore.Core, closestCore.TopDepth, mindiff))
         return closestCore
         
     def getCoreTop(self, site, hole, core):
@@ -133,7 +134,7 @@ class SectionSummary:
         df = self.dataframe
         cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core)]
         if cores.empty:
-            print "SectionSummary: Could not find core {}-{}{}".format(site, hole, core)
+            log.warn("SectionSummary: Could not find core {}-{}{}".format(site, hole, core))
         return cores
         
 
@@ -141,7 +142,7 @@ class SectionSummary:
         df = self.dataframe
         section = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.Section == section)]
         if section.empty:
-            print "SectionSummary: Could not find {}-{}{}-{}".format(site, hole, core, section)
+            log.warn("SectionSummary: Could not find {}-{}{}-{}".format(site, hole, core, section))
         return section
     
     def _findSectionAtDepth(self, site, hole, core, depth):
@@ -228,9 +229,16 @@ def convertSSGapColumnsToSingle(sspath, outpath, maxGapCols):
 
 
 class TestSectionSummary(unittest.TestCase):    
+    def test_create(self):
+        ss = SectionSummary.createWithFile("../testdata/GLAD9_SectionSummary.csv")
+        self.assertTrue(len(ss.getSites()) == 7)        
+        self.assertTrue(ss.containsCore('1', 'A', '33'))
+        self.assertFalse(ss.containsCore('1', 'A', '34'))
+        self.assertTrue(ss.getSectionTop('1', 'A', '33', '9') == 92.73)
+        self.assertTrue(ss.getSectionAtDepth('1', 'B', '2', 4.4) == '3')
+    
     def test_gaps(self):
         ss = SectionSummary.createWithFile("../testdata/SectionSummaryWithGaps.csv")
-        #print ss.dataframe.dtypes
         self.assertTrue(ss.getGaps('1', 'A', '2', '1') == [])
         self.assertTrue(ss.getGaps('1', 'A', '3', '2') == [(0.0, 2.5)])
         self.assertTrue(ss.getTotalGapAboveSectionDepth('1', 'A', '3', '2', 0.0) == 0.0)
@@ -238,7 +246,7 @@ class TestSectionSummary(unittest.TestCase):
         self.assertTrue(ss.getGaps('1', 'A', '18', '1') == [(0.0, 0.5), (94.5, 96.0), (151.0, 152.5)])
         self.assertTrue(ss.getTotalGapAboveSectionDepth('1', 'A', '18', '1', 95.0) == 2.0)
         self.assertTrue(ss.getTotalGapAboveSectionDepth('1', 'A', '18', '1', 152.5) == 3.5)
-    
+        
     # confirm optional Gaps column is added if missing
     def test_gaps_column(self):
         ss = SectionSummary.createWithFile("../testdata/SectionSummaryNoGaps.csv")
