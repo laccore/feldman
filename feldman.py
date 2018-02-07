@@ -446,24 +446,13 @@ class Test(unittest.TestCase):
     def test_splice_measurement(self):
         affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestAffine.csv"
         splicePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestSplice.csv"
-        measPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_XYZ_Test.csv"
-        splicedMeasPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_XYZ_Test_spliced.csv"
-        exportMeasurementData(affinePath, splicePath, measPath, splicedMeasPath, depthColumn='Depth (MBLF, unscaled)')
+        measPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_subsamples_20161120_utf8err.csv"
+        splicedMeasPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_subsamples_TestSpliced.csv"
+        exportMeasurementData(affinePath, splicePath, measPath, splicedMeasPath, depthColumn='Top Depth (MBLF, unscaled)') # include off-splice
 
 if __name__ == "__main__":
+    log.basicConfig(level=log.INFO)
     unittest.main()
-#     log.basicConfig(level=log.DEBUG)
-# 
-#     # splice measurement data - TDP Site 2
-#     basePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/January 2018/"
-#     paleoPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/January 2018/TOW15-1F-pmag/TOW15-MAG-{}RM_split.csv"    
-#     paleoFiles = ['A', 'I', 'N']
-#     for mdPath in [paleoPath.format(paleoFile) for paleoFile in paleoFiles]:
-#         path, ext = os.path.splitext(mdPath)
-#         affinePath = basePath + "TDP_Site1_AffineTable_20161130.csv"
-#         splicePath = basePath + "TDP_Site1_SpliceTable_20161130.csv"
-#         exportPath = path + "_spliced" + ext
-#         exportMeasurementData(affinePath, splicePath, mdPath, exportPath, includeOffSplice=False, depthColumn="ICD mblf T")
 
     # convert sparse splice to SIT    
 #     ssPath = "[section summary path]"
