@@ -1,0 +1,4 @@
+Feldman documentation is written in Markdown. For deployment it's converted to HTML using
+the fabulous pandoc utility (http://pandoc.org) with the following command:
+
+pandoc -f markdown -t html manual.markdown > manual.html

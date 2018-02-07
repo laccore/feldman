@@ -1,0 +1,10 @@
+# ignored files
+.svn
+.DS_Store
+*.[ao]
+*.pyc
+*~
+
+# ignored directories
+build/
+dist/
