@@ -19,6 +19,7 @@ import coring.spliceInterval as si
 import coring.measurement as meas
 from coring.sectionSummary import SectionSummary
 from coring.sparseSplice import SparseSplice
+from coring.manualCorrelation import ManualCorrelationTable
 
 from tabular.csvio import writeToCSV
 import tabular.pandasutils as PU
@@ -31,19 +32,6 @@ def openCorrelatorFunkyFormatFile(filename):
     datfile.close()
     #print df.dtypes
     # df can now be written to a normal CSV
-
-
-def openManualCorrelationFile(mcPath):
-    headers = ["Site1", "Hole1", "Core1", "Tool1", "Section1", "SectionDepth1", "Site2", "Hole2", "Core2", "Tool2", "Section2", "SectionDepth2"]
-    mcFile = open(mcPath, 'rU')
-    mancorr = pandas.read_csv(mcFile, skiprows=1, header=None, names=headers, sep=None, engine='python', na_values="POOP")
-    mcFile.close()
-    
-    objcols = ["Site1", "Hole1", "Core1", "Tool1", "Section1", "Site2", "Hole2", "Core2", "Section2", "Tool2"]
-    
-    PU.forceStringDatatype(mancorr, objcols)
-    
-    return ManualCorrelationTable("Jim's Manual Correlation", mancorr)
     
 
 # get total depth of a section offset using SectionSummary data and curated lengths if available
@@ -87,7 +75,8 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
-    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, manualCorrelationPath)
+    mancorr = ManualCorrelationTable.createWithFile(manualCorrelationPath) if manualCorrelationPath else None
+    offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr)
     
     allAff = onSpliceAffRows + offSpliceAffRows
     allAff = fillAffineRows(allAff)
@@ -328,23 +317,6 @@ def _prepSplicedRowsForExport(dataframe, rows, depthColumn, offset, onSplice):
     PU.insertColumns(rows, idIndex + 1, nameValuesList) 
     
 
-class ManualCorrelationTable:
-    def __init__(self, name, dataframe):
-        self.name = name
-        self.df = dataframe
-        
-    def getOffSpliceCore(self, site, hole, core):
-        # must return a pandas.Series, not a pandas.DataFrame or there will be issues comparing to e.g. SIT rows!
-        # specifically, a "Series lengths must match to compare" error
-        mc = self.df[(self.df.Site1 == site) & (self.df.Hole1 == hole) & (self.df.Core1 == core)]
-        if len(mc) > 0:
-            return mc.iloc[0] # force to Series
-        return None
-    
-    def getOnSpliceCore(self, site, hole, core):
-        return self.df[(self.df.Site2 == site) & (self.df.Hole2 == hole) & (self.df.Core2 == core)]
-    
-
 class OffSpliceCore:
     def __init__(self, row):
         self.osc = row
@@ -359,7 +331,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
     offSpliceCores = []
     onSpliceCores = []
     ssCores = secsumm.getCores()
-    for index, row in ssCores.iterrows():
+    for _, row in ssCores.iterrows():
         if row.Site not in secsumm.getSites(): # skip section summary rows from non-site cores
             skippedCoreCount += 1
             continue
@@ -393,7 +365,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
             if sit.containsCore(mcc.Site2, mcc.Hole2, mcc.Core2):
                 log.debug("SIT contains on-splice core")
 
-                # use sparse splice to SIT logic to determine affine for that core based on alignment of section depths
+                # use sparse splice to SIT logic to determine affine for off-splice core based on alignment of section depths
                 offSpliceMbsf = getOffsetDepth(secsumm, mcc.Site1, mcc.Hole1, mcc.Core1, mcc.Section1, mcc.SectionDepth1) # TODO: UPDATE
                 log.debug("off-splice: {}@{} = {} MBSF".format(oscid, mcc.SectionDepth1, offSpliceMbsf))
                 onSpliceMbsf = getOffsetDepth(secsumm, mcc.Site2, mcc.Hole2, mcc.Core2, mcc.Section2, mcc.SectionDepth2)
@@ -404,7 +376,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
                 log.debug("   + SIT offset of {} = {} MCD".format(sitOffset, onSpliceMcd))
                 log.debug("   off-splice MBSF {} + {} offset = {} on-splice MCD".format(offSpliceMbsf, offset, onSpliceMcd))
                 
-                # Track affine for that core and confirm that other correlations result in the same affine shift - if not, use original shift and WARN
+                # track affine for off-splice core - additional correlations for that core will be ignored if present
                 if oscid not in osAffineShifts:
                     osAffineShifts[oscid] = offset
                 else:
