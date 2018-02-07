@@ -39,7 +39,7 @@ def createWithCSV(filepath, fmt):
     
     reverseColmap = {v: k for k,v in colmap.iteritems()}
     PU.renameColumns(dataframe, reverseColmap) # use format column names
-    log.info("Column map: {}".format(reverseColmap))
+    log.info("Column map: {}".format(["{} -> {}".format(k,v) for k,v in reverseColmap.iteritems()]))
     PU.forceStringDatatype(dataframe, [col.name for col in fmt.cols if col.isString()])
 
     return dataframe
@@ -117,4 +117,5 @@ class Tests(unittest.TestCase):
         self.assertTrue(len(dropSiteHole(df).columns) == 1) # Site and Hole dropped
     
 if __name__ == "__main__":
+    log.basicConfig(level=log.DEBUG)
     unittest.main()
