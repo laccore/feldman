@@ -6,6 +6,7 @@ Utility logic for Pandas, to which the software remains tightly coupled.
 @author: bgrivna
 '''
 
+import logging as log
 import unittest
 
 import numpy
@@ -15,9 +16,21 @@ import pandas
 # default utf-8-sig encoding ignores Byte Order Mark (BOM)
 def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=True,
              engine='python', mode='rU', encoding='utf-8-sig'):
+    success = False
     with open(filepath, mode) as srcfile:
-        dataframe = pandas.read_csv(srcfile, nrows=nrows, sep=sep, skipinitialspace=skipinitialspace,
-                                    na_values=na_values, engine=engine, encoding=encoding)
+        try:
+            dataframe = pandas.read_csv(srcfile, nrows=nrows, sep=sep, skipinitialspace=skipinitialspace,
+                                        na_values=na_values, engine=engine, encoding=encoding)
+            success = True
+        except UnicodeDecodeError, msg:
+            log.warn("Couldn't decode file in {} encoding: {}".format(encoding, msg))
+    
+    if not success:
+        log.warn("Attempting to open with default encoding...")
+        with open(filepath, mode) as srcfile:
+            dataframe = pandas.read_csv(srcfile, nrows=nrows, sep=sep, skipinitialspace=skipinitialspace,
+                                        na_values=na_values, engine=engine) # try default encoding
+        
     return dataframe
 
 # Return minimal dataframe with headers and first row of data.
@@ -36,18 +49,6 @@ def writeToFile(dataframe, filepath):
 def renameColumns(dataframe, colmap):
     dataframe.rename(columns=colmap, inplace=True)
 
-""" returns new dataframe with columns in order specified by colmap """
-# TODO
-# def reorderColumns(dataframe, colmap, fmt):
-#     newmap = {}
-#     for colName in colmap.keys():
-#         index = colmap[colName]
-#         if index is not None:
-#             newmap[colName] = dataframe.icol(index)
-#     df = pandas.DataFrame(newmap, columns=fmt.req)
-#     return df
-
-    
 # Insert a column into dataframe for each (column name, values) tuple in nameValuesList,
 # starting at the specified index.
 def insertColumns(dataframe, index, nameValuesList):
@@ -120,6 +121,15 @@ def forceStringDatatype(dataframe, cols):
 #                 forcedCol = forceColumnFloat64(col, dataframe)
 #         if forcedCol is not None:
 #             dataframe[col] = forcedCol
+#""" returns new dataframe with columns in order specified by colmap """
+# def reorderColumns(dataframe, colmap, fmt):
+#     newmap = {}
+#     for colName in colmap.keys():
+#         index = colmap[colName]
+#         if index is not None:
+#             newmap[colName] = dataframe.icol(index)
+#     df = pandas.DataFrame(newmap, columns=fmt.req)
+#     return df
 
 
 class Tests(unittest.TestCase):
@@ -129,9 +139,18 @@ class Tests(unittest.TestCase):
         
     def test_readHeaders(self):
         hs = readHeaders("../testdata/GLAD9_SectionSummary.csv")
-        self.assertTrue(len(hs) == 9)
+        self.assertTrue(len(hs) == 10)
         self.assertTrue('Site' in hs)
         self.assertTrue('CuratedLength' in hs)
         
+    def test_utf8err(self):
+        df = readFile("../testdata/utf8err.csv")
+        self.assertTrue(len(df) == 2)
+        
+    def test_utf8bom_blanklines(self):
+        df = readFile("../testdata/utf8_bom_blanklines.csv")
+        self.assertTrue(len(df) == 4)
+        
 if __name__ == "__main__":
-    pass
+    log.basicConfig(level=log.DEBUG)
+    unittest.main()
