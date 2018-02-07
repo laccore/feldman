@@ -351,7 +351,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
         
         mcc = None
         if mancorr is not None:
-            mcc = mancorr.getOffSpliceCore(osc.Site, osc.Hole, osc.Core)
+            mcc = mancorr.findByOffSpliceCore(osc.Site, osc.Hole, osc.Core)
             if mcc is not None:
                 log.debug("Found manual correlation for {}".format(OffSpliceCore(osc)))
             else:

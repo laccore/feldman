@@ -37,22 +37,28 @@ class ManualCorrelationTable:
         dataframe = createWithCSV(filepath, ManualCorrelationFormat)
         return cls(os.path.basename(filepath), dataframe)
         
-    def getOffSpliceCore(self, site, hole, core):
-        # must return a pandas.Series, not a pandas.DataFrame or there will be issues comparing to e.g. SIT rows!
-        # specifically, a "Series lengths must match to compare" error
-        mc = self.df[(self.df.Site1 == site) & (self.df.Hole1 == hole) & (self.df.Core1 == core)]
-        if len(mc) > 0:
-            return mc.iloc[0] # force to Series
-        return None
+    def findByOffSpliceCore(self, site, hole, core):
+        df = self.df[(self.df.Site1 == site) & (self.df.Hole1 == hole) & (self.df.Core1 == core)]
+        return self._forceSeriesOrNone(df)
     
-    def getOnSpliceCore(self, site, hole, core):
-        return self.df[(self.df.Site2 == site) & (self.df.Hole2 == hole) & (self.df.Core2 == core)]
+    def findByOnSpliceCore(self, site, hole, core):
+        df = self.df[(self.df.Site2 == site) & (self.df.Hole2 == hole) & (self.df.Core2 == core)]
+        return self._forceSeriesOrNone(df)
+
+    # force pandas.DataFrame to Series or there will be issues comparing to e.g. SIT rows!
+    # specifically, a "Series lengths must match to compare" error
+    def _forceSeriesOrNone(self, dataframe):
+        # should only be a single row in dataframe unless it contains duplicate
+        # off-splice IDs, but play it safe and grab first element 
+        if len(dataframe) > 0:
+            return dataframe.iloc[0] # force to Series
+        return None
 
 class Tests(unittest.TestCase):
     def test_create(self):
         mct = ManualCorrelationTable.createWithFile("../testdata/ManualCorrelationTable.csv")
         self.assertTrue(len(mct.df) == 90)
-        row = mct.getOffSpliceCore('1', 'D', '2')
+        row = mct.findByOffSpliceCore('1', 'D', '2')
         self.assertTrue(row['SectionDepth1'] == 0.5)
         self.assertTrue(row['SectionDepth2'] == 30)
 
