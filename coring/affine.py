@@ -4,6 +4,7 @@ Created on May 6, 2016
 @author: bgrivna
 '''
 
+import logging as log
 import os
 import unittest
 
@@ -12,15 +13,15 @@ from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 from columns import namesToIds, CoreIdentityCols
 
 
-DepthCSF = ColumnIdentity("DepthCSF", "Depth below sea floor", ["Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
-DepthCCSF = ColumnIdentity("DepthCCSF", "Composite depth below sea floor", ["Depth CCSF-A"], TabularDatatype.NUMERIC, 'm')
+DepthCSF = ColumnIdentity("DepthCSF", "Depth below sea floor", ["Depth CSF-A", "Depth MBSF", "Depth MBLF"], TabularDatatype.NUMERIC, 'm')
+DepthCCSF = ColumnIdentity("DepthCCSF", "Composite depth below sea floor", ["Depth CCSF-A", "Depth MCD"], TabularDatatype.NUMERIC, 'm')
 Offset = ColumnIdentity("Offset", "Difference between a core's CSF-A and CCSF-A depth", ["Cumulative Offset", "Total Offset"], TabularDatatype.NUMERIC, 'm')
 DifferentialOffset = ColumnIdentity("DifferentialOffset", "Difference between offset of current core and preceding core in hole", [], TabularDatatype.NUMERIC, 'm')
 GrowthRate = ColumnIdentity("GrowthRate", "Ratio of core's CSF-A : CCSF-A depths", [], TabularDatatype.NUMERIC)
 ShiftType = ColumnIdentity("ShiftType", "Core's affine shift type: TIE, SET, REL or ANCHOR", ["Affine Type", "Shift"])
-FixedCore = ColumnIdentity("FixedCore", "For a core shifted by a TIE, the Hole + Core (e.g. B13) of the fixed core", [])
-FixedTieCSF =  ColumnIdentity("FixedTieCSF", "CSF depth of the TIE point on the fixed core", ["Fixed Tie CSF-A"], TabularDatatype.NUMERIC, 'm')
-ShiftedTieCSF = ColumnIdentity("ShiftedTieCSF", "CSF depth of the TIE point on the shifted core", ["Shifted Tie CSF-A"], TabularDatatype.NUMERIC, 'm')
+FixedCore = ColumnIdentity("FixedCore", "For a core shifted by a TIE, the Hole + Core (e.g. B13) of the fixed core", [], optional=True)
+FixedTieCSF =  ColumnIdentity("FixedTieCSF", "CSF depth of the TIE point on the fixed core", ["Fixed Tie CSF-A"], TabularDatatype.NUMERIC, 'm', optional=True)
+ShiftedTieCSF = ColumnIdentity("ShiftedTieCSF", "CSF depth of the TIE point on the shifted core", ["Shifted Tie CSF-A"], TabularDatatype.NUMERIC, 'm', optional=True)
 
 FormatSpecificCols = [DepthCSF, DepthCCSF, Offset, DifferentialOffset, GrowthRate, ShiftType, FixedCore, FixedTieCSF, ShiftedTieCSF]
 
@@ -45,9 +46,9 @@ class AffineTable:
         df = self.dataframe
         cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.Tool == tool)]
         if cores.empty:
-            print "AffineTable: Could not find core {}{}-{}{}".format(site, hole, core, tool)
+            log.warn("AffineTable: Could not find core {}{}-{}{}".format(site, hole, core, tool))
         elif len(cores) > 1:
-            print "AffineTable: Found multiple matches for core {}{}-{}{}".format(site, hole, core, tool)
+            log.warn("AffineTable: Found multiple matches for core {}{}-{}{}".format(site, hole, core, tool))
         return cores.iloc[0]['Offset']
     
     def allRows(self):
@@ -95,11 +96,10 @@ class AffineRow:
     
 class Tests(unittest.TestCase):
     def test_create(self):
-        ss = AffineTable.createWithFile("/Users/bgrivna/Desktop/LacCore/TDP Towuti/January 2018/TDP_Site1_AffineTable_20161130.csv")
-#         self.assertTrue(len(ss.dataframe) == 58)
-#         self.assertTrue(math.isnan(ss.dataframe['Gap'].iloc[0]))
-#         self.assertTrue('1' in ss.getSites())
-#         self.assertTrue(len(ss.getHoles()) == 3)
+        aff = AffineTable.createWithFile("../testdata/GLAD9_Site1_Affine.csv")
+        self.assertTrue(len(aff.dataframe) == 94)
+        self.assertTrue(sorted(aff.getSites()) == ['1'])
+        self.assertTrue(aff.getOffset('1', 'B', '2', 'H') == 0.298)
         
 if __name__ == "__main__":
     unittest.main()    
