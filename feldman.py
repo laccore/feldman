@@ -24,7 +24,7 @@ from coring.manualCorrelation import ManualCorrelationTable
 from tabular.csvio import writeToCSV
 import tabular.pandasutils as PU
 
-FeldmanVersion = "0.0.1"
+FeldmanVersion = "0.0.2"
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
 def openCorrelatorFunkyFormatFile(filename):
