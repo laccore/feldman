@@ -45,7 +45,10 @@ class MainWindow(QtWidgets.QWidget):
         hlayout.addWidget(self.spliceDataButton)
         
     def initPrefs(self):
-        prefPath = os.path.join(user.home, ".feldman", "prefs.pk")
+        prefDir = os.path.join(user.home, ".feldman")
+        if not os.path.exists(prefDir):
+            os.mkdir(prefDir)
+        prefPath = os.path.join(prefDir, "prefs.pk")
         self.prefs = prefs.Prefs(prefPath)
         self.installPrefs()
         
