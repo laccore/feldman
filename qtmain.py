@@ -34,61 +34,36 @@ class MainWindow(QtWidgets.QWidget):
         self.initPrefs()
         
     def initGUI(self):
-        self.setWindowTitle("Feldman 0.0.1")
-        
-        vlayout = QtWidgets.QVBoxLayout(self)
-        self.secSummFile = gui.SingleFilePanel("Section Summary")
-        self.affineFile = gui.SingleFilePanel("Affine Table")
-        self.sitFile = gui.SingleFilePanel("Splice Interval Table")
-        vlayout.addWidget(self.secSummFile)
-        vlayout.addWidget(self.affineFile)
-        vlayout.addWidget(self.sitFile)
+        self.setWindowTitle("Feldman {}".format(feldman.FeldmanVersion))
         
         self.sparseToSitButton = QtWidgets.QPushButton("Convert Sparse Splice to SIT")
         self.sparseToSitButton.clicked.connect(self.sparseToSit)
         self.spliceDataButton = QtWidgets.QPushButton("Splice Measurement Data")
         self.spliceDataButton.clicked.connect(self.spliceData)
-        hlayout = QtWidgets.QHBoxLayout()
+        hlayout = QtWidgets.QHBoxLayout(self)
         hlayout.addWidget(self.sparseToSitButton)
         hlayout.addWidget(self.spliceDataButton)
-        vlayout.addLayout(hlayout)
         
     def initPrefs(self):
-        prefPath = os.path.join(user.home, ".feldman/prefs.pk")
+        prefPath = os.path.join(user.home, ".feldman", "prefs.pk")
         self.prefs = prefs.Prefs(prefPath)
         self.installPrefs()
         
     def installPrefs(self):
-        self.secSummFile.setPath(self.prefs.get("lastSectionSummaryPath"))
-        self.affineFile.setPath(self.prefs.get("lastAffinePath"))
-        self.sitFile.setPath(self.prefs.get("lastSITPath"))
         geom = self.prefs.get("windowGeometry", None)
         if geom is not None:
             self.setGeometry(geom)
     
     def savePrefs(self):
-        self.prefs.set("lastSectionSummaryPath", self.secSummFile.getPath())
-        self.prefs.set("lastAffinePath", self.affineFile.getPath())
-        self.prefs.set("lastSITPath", self.sitFile.getPath())
         self.prefs.set("windowGeometry", self.geometry())
         self.prefs.write()
         
     def sparseToSit(self):
-        secSummPath = self.secSummFile.getPath()
-        if not os.path.exists(secSummPath):
-            self.warnbox("Invalid path", "Section Summary file '{}' does not exist".format(secSummPath))
-            return
-        
-        dlg = ConvertSparseToSITDialog(self, secSummPath)
-        accepted = dlg.exec_() == QtWidgets.QDialog.Accepted
-        if accepted:
-            if len(self.affineFile.getPath()) == 0:
-                self.affineFile.setPath(dlg.affineOutPath)
-            if len(self.sitFile.getPath()) == 0:
-                self.sitFile.setPath(dlg.sitOutPath)
+        dlg = ConvertSparseToSITDialog(self)
+        dlg.exec_()# == QtWidgets.QDialog.Accepted
                 
     def spliceData(self):
-        dlg = SpliceMeasurementDataDialog(self, self.affineFile.getPath(), self.sitFile.getPath())
+        dlg = SpliceMeasurementDataDialog(self)
         dlg.exec_()# == QtWidgets.QDialog.Accepted
                 
     def warnbox(self, title, message):
@@ -101,14 +76,9 @@ class MainWindow(QtWidgets.QWidget):
         
 
 class ConvertSparseToSITDialog(QtWidgets.QDialog):
-    def __init__(self, parent, secSummPath):
+    def __init__(self, parent):
         QtWidgets.QDialog.__init__(self, parent)
-        
-        self.secSummPath = secSummPath
         self.parent = parent
-        self.affineOutPath = ""
-        self.sitOutPath = ""
-        
         self.initGUI()
         self.installPrefs()
         
@@ -117,8 +87,10 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         vlayout = QtWidgets.QVBoxLayout(self)
         vlayout.setSpacing(20)
         
+        self.secSummFile = gui.SingleFilePanel("Section Summary")
         self.sparseFile = gui.SingleFilePanel("Sparse Splice")
         self.manCorrFile = gui.SingleFilePanel("Manual Correlation File")
+        vlayout.addWidget(self.secSummFile)
         vlayout.addWidget(self.sparseFile)
         vlayout.addLayout(gui.HelpTextDecorator(self.manCorrFile, "Optional user-defined correlations for off-splice cores. Used in affine table generation.", spacing=0))
 
@@ -126,11 +98,6 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         self.lazyAppend = QtWidgets.QCheckBox("Lazy Append")
         vlayout.addLayout(gui.HelpTextDecorator(self.useScaledDepths, "Use section summary's scaled depths to map section depth to total depth. Unscaled depths are the default."))
         vlayout.addLayout(gui.HelpTextDecorator(self.lazyAppend, "Always use previous core's affine shift for the current APPEND core operation."))
-        
-        self.affineOutFile = gui.SingleFilePanel("Affine Table", fileType=gui.SingleFilePanel.SaveFile)
-        self.sitOutFile = gui.SingleFilePanel("Splice Interval Table", fileType=gui.SingleFilePanel.SaveFile)
-        vlayout.addLayout(gui.HelpTextDecorator(self.affineOutFile, "Destination of generated affine file.", spacing=0))
-        vlayout.addLayout(gui.HelpTextDecorator(self.sitOutFile, "Destination of generated splice interval table file.", spacing=0))
         
         self.logText = gui.LogTextArea(self.parent, "Log")
         vlayout.addLayout(self.logText.layout)
@@ -146,18 +113,21 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         vlayout.addLayout(hlayout)
         
     def installPrefs(self):
-        self.sparseFile.setPath(self.parent.prefs.get("lastSparseSplicePath"))
+        self.secSummFile.setPathIfExists(self.parent.prefs.get("lastSectionSummaryPath"))
+        self.sparseFile.setPathIfExists(self.parent.prefs.get("lastSparseSplicePath"))
         geom = self.parent.prefs.get("convertSparseWindowGeometry", None)
         if geom is not None:
             self.setGeometry(geom)
      
     def savePrefs(self):
+        self.parent.prefs.set("lastSectionSummaryPath", self.secSummFile.getPath())
         self.parent.prefs.set("lastSparseSplicePath", self.sparseFile.getPath())
         self.parent.prefs.set("convertSparseWindowGeometry", self.geometry())
         
     def convert(self):
         try:
-            validatePath(self.secSummPath, "Section Summary")
+            secSummPath = self.secSummFile.getPath()
+            validatePath(secSummPath, "Section Summary")
             
             sparsePath = self.sparseFile.getPath()
             validatePath(sparsePath, "Sparse Splice")
@@ -167,9 +137,6 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
                 validatePath(self.manCorrFile.getPath(), "Manual Correlation")
                 manCorrPath = self.manCorrFile.getPath()
                 
-            if len(self.affineOutFile.getPath()) == 0 or len(self.sitOutFile.getPath()) == 0:
-                gui.warnbox(self, "Invalid Path", "Specify destination of generated affine and splice files.")
-                return
         except InvalidPathError as err:
             gui.warnbox(self, "Invalid Path", err.message)
             return
@@ -177,8 +144,9 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         useScaledDepths = self.useScaledDepths.isChecked()
         lazyAppend = self.lazyAppend.isChecked()
         
-        self.affineOutPath = self.affineOutFile.getPath()
-        self.sitOutPath = self.sitOutFile.getPath()
+        basePath, ext = os.path.splitext(sparsePath)
+        affineOutPath = basePath + "-Affine" + ext
+        sitOutPath = basePath + "-SIT" + ext
         
         self.closeButton.setEnabled(False) # prevent close of dialog
         self.convertButton.setText("Converting...")
@@ -189,7 +157,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
             self.logText.setLevel(logging.DEBUG if self.logText.isVerbose() else logging.INFO)
             self.logText.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
             self.logText.logText.clear()
-            feldman.convertSparseSplice(self.secSummPath, sparsePath, self.affineOutPath, self.sitOutPath, useScaledDepths, lazyAppend, manCorrPath)
+            feldman.convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths, lazyAppend, manCorrPath)
         except KeyError as err:
             gui.warnbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
             logging.error(traceback.format_exc())
@@ -209,33 +177,23 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
 
 
 class SpliceMeasurementDataDialog(QtWidgets.QDialog):
-    def __init__(self, parent, affinePath, sitPath):
+    def __init__(self, parent):
         QtWidgets.QDialog.__init__(self, parent)
         
         self.parent = parent
         
-        self.initGUI(affinePath, sitPath)
+        self.initGUI()
         self.installPrefs()
         
-    def initGUI(self, affinePath, sitPath):
+    def initGUI(self):
         self.setWindowTitle("Splice Measurement Data")
         vlayout = QtWidgets.QVBoxLayout(self)
         vlayout.setSpacing(20)
         
         self.affineFile = gui.SingleFilePanel("Affine Table", fileType=gui.SingleFilePanel.OpenFile)
-        self.affineFile.setPath(affinePath)
         self.sitFile = gui.SingleFilePanel("Splice Interval Table", fileType=gui.SingleFilePanel.OpenFile)
-        self.sitFile.setPath(sitPath)
         vlayout.addLayout(gui.HelpTextDecorator(self.affineFile, "Affine shifts to apply to data. Should correspond to applied splice.", spacing=0))
         vlayout.addLayout(gui.HelpTextDecorator(self.sitFile, "Splice to apply to data.", spacing=0))
-        
-#         self.includeOffSplice = QtWidgets.QCheckBox("Include Off-Splice Data")
-#         iosHelpText = "All off-splice rows will be included in spliced data with On-Splice = FALSE."
-#         vlayout.addLayout(gui.HelpTextDecorator(self.includeOffSplice, iosHelpText))
-#         
-#         self.wholeSpliceSection = QtWidgets.QCheckBox("Whole Splice Sections")
-#         wssHelpText = "All rows in a splice interval's sections, including those outside the interval's depth range, will be included with On-Splice = TRUE."
-#         vlayout.addLayout(gui.HelpTextDecorator(self.wholeSpliceSection, wssHelpText))
         
         self.mdList = gui.FileTablePanel("Measurement Data to be Spliced", getFloatCols)
         vlayout.addWidget(self.mdList)
@@ -265,7 +223,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             sitPath = self.sitFile.getPath()
             validatePath(sitPath, "Splice Interval Table")
             
-            mdPathsAndOpts = self.mdList.getFiles()
+            spliceParams = self.mdList.getFiles()
             
         except InvalidPathError as err:
             gui.warnbox(self, "Invalid Path", err.message)
@@ -280,7 +238,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             self.logText.setLevel(logging.DEBUG if self.logText.isVerbose() else logging.INFO)
             self.logText.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
             self.logText.logText.clear()
-            for mdPath, depthColumn, includeOffSplice, wholeSpliceSection in mdPathsAndOpts:
+            for mdPath, depthColumn, includeOffSplice, wholeSpliceSection in spliceParams:
                 outPath = os.path.splitext(mdPath)[0] + "-spliced.csv"
                 feldman.exportMeasurementData(affinePath, sitPath, mdPath, outPath, includeOffSplice, wholeSpliceSection, depthColumn)
         except KeyError as err:
@@ -300,9 +258,16 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
         geom = self.parent.prefs.get("spliceMeasurementDataWindowGeometry", None)
         if geom is not None:
             self.setGeometry(geom)
+        self.affineFile.setPathIfExists(self.parent.prefs.get("affineTable"))
+        self.sitFile.setPathIfExists(self.parent.prefs.get("spliceIntervalTable"))
+        mdPaths = self.parent.prefs.get("measurementDataPaths")
+        self.mdList.addFiles([path for path in mdPaths if os.path.exists(path)])
      
     def savePrefs(self):
         self.parent.prefs.set("spliceMeasurementDataWindowGeometry", self.geometry())
+        self.parent.prefs.set("affineTable", self.affineFile.getPath())
+        self.parent.prefs.set("spliceIntervalTable", self.sitFile.getPath())
+        self.parent.prefs.set("measurementDataPaths", [p[0] for p in self.mdList.getFiles()])
 
     def closeEvent(self, event):
         self.savePrefs()

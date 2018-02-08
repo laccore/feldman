@@ -94,6 +94,7 @@ class FileTablePanel(QtWidgets.QWidget):
     def __init__(self, title, depthColumnsProvider):
         QtWidgets.QWidget.__init__(self)
         self.initUI(title)
+        self.mdPaths = {} # dict of MeasurementData paths keyed on basenames
         self.count = 0
         self.depthColumnsProvider = depthColumnsProvider
 
@@ -124,24 +125,31 @@ class FileTablePanel(QtWidgets.QWidget):
         vlayout.addLayout(arlayout)
         vlayout.setContentsMargins(0,0,0,0)
         
-    def addFile(self, newfile):
-        self._makeRow(newfile, self.depthColumnsProvider(newfile))
-        self._enableRemove()
+    def addFile(self, filepath):
+        filename = os.path.basename(filepath)
+        if filename not in self.mdPaths:
+            self.mdPaths[filename] = filepath 
+            self._makeRow(filename, self.depthColumnsProvider(filepath))
+            self._enableRemove()
+        else:
+            logging.warn("File {} is already in the list".format(filename))
         
     def addFiles(self, filelist):
         for f in filelist:
             self.addFile(f)
             
     def getFiles(self):
-        files = [self.getFileAndOptions(row) for row in range(self.table.rowCount())]
-        return files
+        params = [self.getRowParams(row) for row in range(self.table.rowCount())]
+        for p in params:
+            p[0] = self.mdPaths[p[0]] # filename to filepath
+        return params
         
-    def getFileAndOptions(self, row):
-        path = self.table.cellWidget(row, 0).text()
+    def getRowParams(self, row):
+        filename = self.table.cellWidget(row, 0).text()
         depthColumn = self.table.cellWidget(row, 1).currentText()
         lazyAppend = self.table.cellWidget(row, 2).isChecked()
         wholeSectionSplice = self.table.cellWidget(row, 3).isChecked()
-        return [path, depthColumn, lazyAppend, wholeSectionSplice]
+        return [filename, depthColumn, lazyAppend, wholeSectionSplice]
     
     def onAdd(self):
         files = chooseFiles(self)
@@ -150,6 +158,8 @@ class FileTablePanel(QtWidgets.QWidget):
         
     def onRemove(self):
         if self.hasSelection():
+            params = self.getRowParams(self.getSelectedRow())
+            self.mdPaths.pop(params[0])
             self.table.removeRow(self.getSelectedRow())
             self._enableRemove()
             
@@ -165,10 +175,10 @@ class FileTablePanel(QtWidgets.QWidget):
     def _enableRemove(self):
         self.rmButton.setEnabled(self.table.rowCount() > 0)
         
-    def _makeRow(self, filepath, depthColumns):
+    def _makeRow(self, filename, depthColumns):
         row = self.table.rowCount()
         self.table.insertRow(row)
-        self.table.setCellWidget(row, 0, QtWidgets.QLabel(filepath))
+        self.table.setCellWidget(row, 0, QtWidgets.QLabel(filename))
         depthCombo = QtWidgets.QComboBox()
         depthCombo.addItems(depthColumns)
         self.table.setCellWidget(row, 1, depthCombo)
@@ -222,6 +232,10 @@ class SingleFilePanel(QtWidgets.QWidget):
     
     def setPath(self, newpath):
         self.filePath.setText(newpath)
+        
+    def setPathIfExists(self, newpath):
+        if os.path.exists(newpath):
+            self.setPath(newpath)
 
     def onBrowse(self):
         if self.fileType == self.OpenFile:
