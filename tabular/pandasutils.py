@@ -12,6 +12,8 @@ import unittest
 import numpy
 import pandas
 
+from columns import find_match
+
 
 # default utf-8-sig encoding ignores Byte Order Mark (BOM)
 def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=True,
@@ -48,6 +50,10 @@ def writeToFile(dataframe, filepath):
 
 def renameColumns(dataframe, colmap):
     dataframe.rename(columns=colmap, inplace=True)
+    
+def getColumnIndex(dataframe, colname):
+    dfname = find_match(colname, list(dataframe.columns))
+    return dataframe.columns.get_loc(dfname) if dfname else None
 
 # Insert a column into dataframe for each (column name, values) tuple in nameValuesList,
 # starting at the specified index.

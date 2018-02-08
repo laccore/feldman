@@ -312,7 +312,9 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
 # rename and add columns in spliced measurement data per LacCore requirements
 def _prepSplicedRowsForExport(dataframe, rows, depthColumn, offset, onSplice):
     PU.renameColumns(rows, {'Depth':depthColumn})
-    idIndex = dataframe.columns.get_loc('SectionID')
+    idIndex = PU.getColumnIndex(dataframe, 'SectionID')
+    if not idIndex: # if SectionID is missing, insert at the beginning
+        idIndex = 0
     nameValuesList = [('Splice Depth', pandas.Series(rows[depthColumn] + offset)), ('Offset', offset), ('On-Splice', str(onSplice).upper())]
     PU.insertColumns(rows, idIndex + 1, nameValuesList) 
     
