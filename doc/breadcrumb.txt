@@ -1,4 +1,7 @@
 Feldman documentation is written in Markdown. For deployment it's converted to HTML using
 the fabulous pandoc utility (http://pandoc.org) with the following command:
 
-pandoc -f markdown -t html manual.markdown > manual.html
+pandoc -f markdown-smart -t html manual.markdown > manual.html
+
+-smart is appended to markdown to stifle output of curly apostrophes and quotes, which
+Chrome interprets correctly but Firefox does not. They're too fancy for this manual anyway!
