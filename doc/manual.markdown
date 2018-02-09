@@ -1,6 +1,6 @@
 Feldman User's Guide
 --------------------
-*December 12, 2017*
+*February 9, 2018*
 *version 0.0.2*
 
 TODO: Table of Contents
@@ -8,71 +8,118 @@ TODO: Table of Contents
 ### File Formats
 Feldman reads and writes tabular data files in comma-separated values (CSV) format.
 
+Templates for all formats can be found in the templates folder alongside the Feldman application.
+Examples of all formats can be found in the examples folder.
+
+
 General requirements:
 
 *   The first row of a file must be a header row with a name for each column.
 *	All subsequent rows must be data rows; no additional rows (e.g. units, comments) are allowed.
-*   Names of columns required by a format must match exactly, they are case-sensitive.
 *   One or more non-required columns are allowed if their names are unique.
 *   Columns can be in any order.
 
 #### Identity Columns
 
-All formats must include the following identity columns:
+All formats will use some combination of the following columns to identify cores and/or sections:
 
 >		Site: An integer > 0 representing the collection site  
 >		Hole: One or more capital letters (A, B, ..., Y, Z, AA, AB...) representing a single drilled hole  
 >		Core: An integer > 0 representing an interval of material collected from parent hole  
 >		Tool: A single capital letter representing the drilling tool used to collect the core  
-
-
-All formats, with the exception of affine and section summary tables, also include:
-  
->		Section: An integer > 0 representing a subdivision of a core
+>		Section: An integer > 0 representing a post-extraction subdivision of a core
 
 
 #### Section Summary
 A section summary table contains one row of data for every section in a project.
 It is used to translate section depths to total depth, and as a "master list" of a
 project's core sections. Sections that may not be included in a splice, but are part
-of measurement data to be spliced should be included.
+of measurement data to be spliced, should be included.
 
 A section summary must include the following columns: 
 
->		Identity Columns, including Section: see above  
+>		Identity Columns: Site, Hole, Core, Tool, and Section  
 >		TopDepth: Top depth of the section, in meters (m)
 >		BottomDepth: Bottom depth of the section, in meters (m)
 >		TopDepthScaled: Scaled (in situ) top depth of the section, in meters (m) 
 >		BottomDepth: Scaled (in situ) bottom depth of the section, in meters (m)
 >		CuratedLength: Length of the curated section, in meters (m)
 
-#### Affine
-An affine table contains one row of data for every core in a project. Each row
-includes the affine shift distance and associated metadata. 
+It may optionally include:
 
-#### Splice Interval
-A splice interval table contains one row of data for each interval of a splice.
+>		Gaps: One or more [top]-[bottom] pairs separated by spaces, each indicating a gap in the section
+>		in centimeters (cm). For example, 10-20 indicates a single gap from 10-20cm section depth.
+>		30-40 60-62.5 80-97 indicates three gaps: 30-40cm, 60-62.5cm, and 80-97cm. Leave value empty for
+>		sections with no gaps.
 
 #### Sparse Splice
 A sparse splice table contains one row of data for each interval of a sparse splice.
-It is similar to a splice interval table, but each interval is defined only in section depths,
-not total depths.
+Each interval is defined only in section depths, not total depths. The term "sparse"
+comes from the lack of total depths.
 
 A sparse splice table must include the following columns:
 
->		Identity Columns, excluding Section: see above
+>		Identity Columns: Site, Hole, Core, and Tool
 >		Top Section: section in which the interval begins
 >		Top Offset: section depth at which interval beings, in centimeters (cm)
 >		Bottom Section: section in which the interval ends
 >		Bottom Offset: section depth at which interval ends, in centimeters (cm)
 >		Splice Type: TIE or APPEND
+
+It may optionally include:
+
 >		Data Used: Data type used to define this interval
->		Comment: Users' comments on interval
->		Gap (m): User-defined gap between current and preceding interval, in meters (m). Overrides default.
+>		Comment: User remarks
+>		Gap: User-defined gap between current and preceding interval, in meters (m). Overrides default APPEND behavior.
 
-The Data Used, Comment, and Gap (m) column headers are required, but values in these columns are optional
-and can be left empty. Non-empty values will be processed.
 
+#### Affine
+An affine table contains one row for every core in a project. Each row
+indicates the core's affine shift distance and associated metadata.
+
+An affine table must include the following columns:
+
+>		Identity Columns: Site, Hole, Core, and Tool
+>		Depth CSF-A: Depth of the top of the core, in meters (m)
+>		Depth CCSF-A: Shifted/composite depth of the top of the core, in meters (m)
+>		Offset:	Distance of core shift, in meters (m). Positive values indicate a downward shift, negative upward.
+>		Shift Type: Core's shift type. Valid values are TIE, SET, REL, or ANCHOR.
+
+It may optionally include the following:
+
+>		Differential Offset: Difference between the offset of the current core and the previous core in the hole, in meters (m)
+>		Growth Rate: Ratio of core's CCSF-A depth to its CSF-A depth
+>		Fixed Core: For a TIE operation, the Hole and Core of the fixed core, e.g. A1, B12, C87
+>		Fixed Tie CSF-A: The CSF-A depth of the tie point on the fixed core, in meters (m)
+>		Shifted Tie CSF-A: The CSF-A depth of the tie point on the shifted core, in meters (m)
+>		Data Used: Data type used to shift the core
+>		Comment: User remarks
+
+All columns will be included in the affine generated by the Sparse to SIT operation.   
+
+#### Splice Interval Table, or SIT
+A splice interval table contains one row of data for each interval of a splice.
+It is a superset of a sparse splice. In addition to section depths for the top and
+bottom of each interval, it includes the total depths in CSF-A and CCSF-A.
+
+>		Identity Columns: Site, Hole, Core, and Tool
+>		Top Section: section in which the interval begins
+>		Top Offset: section depth at which interval begins, in centimeters (cm)
+>		Top Depth CSF-A: total depth at which interval begins, in meters (m)
+>		Top Depth CCSF-A: shifted/composite depth at which interval begins, in meters (m)
+>		Bottom Section: section in which the interval ends
+>		Bottom Offset: section depth at which interval ends, in centimeters (cm)
+>		Bottom Depth CSF-A: total depth at which interval ends, in meters (m)
+>		Bottom Depth CCSF-A: shifted/composite depth at which interval ends, in meters (m)
+>		Splice Type: TIE or APPEND
+
+It may optionally include:
+
+>		Data Used: Data type used to define this interval
+>		Comment: User remarks
+>		Gap: User-defined gap between current and preceding interval, in meters (m). Overrides default APPEND behavior.
+
+All columns will be included in the splice interval table generated by the Sparse to SIT operation.
 
 #### Manual Correlation
 A manual correlation table contains one or more rows of data, each indicating a user-defined alignment
@@ -81,18 +128,18 @@ shift for the off-splice core. Each row consists of two sets of Identity Columns
 
 A manual correlation table must include the following columns:
 
->		Site1: The on-splice site
->		Hole1: The on-splice hole
->		Core1: The on-splice core
->		Tool1: The on-splice tool
->		Section1: The on-splice section
->		SectionDepth1: Section depth of the on-splice section to be aligned with off-splice section
->		Site2: The off-splice site  
->		Hole2: The off-splice hole
->		Core2: The off-splice core
->		Tool2: The off-splice tool
->		Section2: The off-splice section
->		SectionDepth2: Section depth of the off-splice section to be aligned with on-splice section
+>		Site1: The off-splice site
+>		Hole1: The off-splice hole
+>		Core1: The off-splice core
+>		Tool1: The off-splice tool
+>		Section1: The off-splice section
+>		SectionDepth1: Section depth of the off-splice section to be aligned with on-splice section
+>		Site2: The on-splice site  
+>		Hole2: The on-splice hole
+>		Core2: The on-splice core
+>		Tool2: The on-splice tool
+>		Section2: The on-splice section
+>		SectionDepth2: Section depth of the on-splice section to be aligned with off-splice section
 
 
 #### Measurement Data
@@ -100,5 +147,8 @@ A measurement data table contains one or more measurements taken at a given dept
 
 A measurement data table must include the following columns:
 
->		Identity Columns, including Section: see above
->		Depth: total depth of the measurement(s) of the core section, in meters (m).
+>		Identity Columns: Site, Hole, Core, Tool, Section
+>		[Depth Column]: total depth of the measurement(s) of the core section, in meters (m). Depths
+>		in the specified column will be used to determine whether a measurement is within a splice interval.
+
+The Depth Column is selected in the Splice Measurement Data dialog, and can have any name.
