@@ -6,7 +6,7 @@ Created on Jul 30, 2017
 
 import os, sys, user, logging, traceback
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 
 import feldman
 import gui
@@ -32,17 +32,36 @@ class MainWindow(QtWidgets.QWidget):
         self.app = app
         self.initGUI()
         self.initPrefs()
-        
+            
+    def updateVocabulary(self, text):
+        if text == "IODP (Core Type)":
+            feldman.OutputVocabulary = "IODP"
+        else:
+            feldman.OutputVocabulary = "LacCore"
+
     def initGUI(self):
         self.setWindowTitle("Feldman {}".format(feldman.FeldmanVersion))
         
+        vlayout = QtWidgets.QVBoxLayout(self)
+        self.orgLabel = QtWidgets.QLabel("Output Vocabulary:")
+        self.orgCombo = QtWidgets.QComboBox()
+        self.orgCombo.addItems(["IODP (Core Type)", "LacCore (Tool)"])
+        self.orgCombo.currentTextChanged.connect(self.updateVocabulary)
+        hlayout = QtWidgets.QHBoxLayout()
+        hlayout.addStretch(1) # center label + combo
+        hlayout.addWidget(self.orgLabel)
+        hlayout.addWidget(self.orgCombo)
+        hlayout.addStretch(1) # center label + combo
+        vlayout.addLayout(hlayout)
         self.sparseToSitButton = QtWidgets.QPushButton("Convert Sparse Splice to SIT")
         self.sparseToSitButton.clicked.connect(self.sparseToSit)
         self.spliceDataButton = QtWidgets.QPushButton("Splice Measurement Data")
         self.spliceDataButton.clicked.connect(self.spliceData)
-        hlayout = QtWidgets.QHBoxLayout(self)
-        hlayout.addWidget(self.sparseToSitButton)
-        hlayout.addWidget(self.spliceDataButton)
+        btnlayout = QtWidgets.QHBoxLayout()
+        btnlayout.addWidget(self.sparseToSitButton)
+        btnlayout.addWidget(self.spliceDataButton)
+        vlayout.addLayout(btnlayout)
+        vlayout.layout()
         
     def initPrefs(self):
         prefDir = os.path.join(user.home, ".feldman")

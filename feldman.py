@@ -26,6 +26,8 @@ import tabular.pandasutils as PU
 
 FeldmanVersion = "0.0.2"
 
+OutputVocabulary = 'IODP'
+
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
 def openCorrelatorFunkyFormatFile(filename):
     datfile = open(filename, 'rU')
@@ -299,15 +301,17 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
             
         log.info("Total off-splice rows included in export: {}".format(totalOffSpliceWritten))
         
-        unwritten = offSpliceDF[~(offSpliceDF.index.isin(pandas.concat(offSpliceRows).index))] # rows that still haven't been written!
+        unwritten = offSpliceDF[~(offSpliceDF.index.isin(pandas.concat(offSpliceRows).index))].copy() # rows that still haven't been written!
         if len(unwritten.index) > 0:
             log.warn("Of {} off-splice rows, {} were not included in the export.".format(totalOffSplice, len(unwritten)))
             unwrittenPath = os.path.splitext(mdPath)[0] + "-unwritten.csv"
             log.warn("Those rows will be saved to {}".format(unwrittenPath))
+            prettyColumns(unwritten, meas.MeasurementFormat)
             writeToCSV(unwritten, unwrittenPath)
     
     exportdf = pandas.concat(onSpliceRows)
 
+    prettyColumns(exportdf, meas.MeasurementFormat)
     writeToCSV(exportdf, exportPath)
     log.info("Wrote spliced data to {}".format(exportPath))
 
@@ -430,8 +434,8 @@ def fillAffineRows(affineRows):
 
 # Rename columns in dataframe from their format's internal name to their
 # pretty name if the internal name is in the dataframe.
-def prettyColumns(dataframe, fmt, org=None):
-    colmap = {c.name: c.prettyName(org) for c in fmt.cols if c.name in dataframe}
+def prettyColumns(dataframe, fmt):
+    colmap = {c.name: c.prettyName(OutputVocabulary) for c in fmt.cols if c.name in dataframe}
     PU.renameColumns(dataframe, colmap)
     
 def appendDate(text):
@@ -463,7 +467,7 @@ if __name__ == "__main__":
     log.basicConfig(level=log.INFO)
     unittest.main()
 
-    # convert sparse splice to SIT    
+    # convert sparse splice to SIT
 #     ssPath = "[section summary path]"
 #     sparsePath = "[sparse splice path]"
 #     basepath = "[root export path and filename prefix]"
