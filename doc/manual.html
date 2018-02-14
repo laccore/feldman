@@ -1,35 +1,15 @@
 <h2 id="feldman-users-guide">Feldman User's Guide</h2>
-<p><em>February 9, 2018</em> <em>version 0.0.2</em></p>
+<p><em>February 14, 2018</em> <em>version 0.0.3</em></p>
 <h3 id="introduction">Introduction</h3>
 <p>Feldman is a software utility developed by LacCore/CSDCO to simplify the process of aligning and splicing core sections, and exporting measurement data based on a splice.</p>
-<h3 id="convert-sparse-splice-to-sit">Convert Sparse Splice to SIT</h3>
-<p>Given a section summary and sparse splice, Feldman will generate an affine table and splice interval table (SIT).</p>
-<p>The generated affine and SIT are written to the same directory as the input sparse splice file. They use the sparse splice's filename plus &quot;-affine&quot; or &quot;-SIT&quot;. For example, for a sparse splice file named MySparseSplice.csv, the resulting affine and SIT are named MySparseSplice-affine.csv and MySparseSplice-SIT.csv, respectively.</p>
-<p>Click the &quot;...&quot; buttons to select section summary and sparse splice files as input.</p>
-<p>By default, Feldman determines the affine offset of off-splice cores by finding the nearest on-splice core in the same hole and using that offset.</p>
-<p>If a manual correlation table is provided, those alignments will be used for off-splice cores rather than the default.</p>
-<p>Use Scaled Depths: if checked, the section summary's scaled depths will be used to map section depth to total depth. Unscaled depths are the default.</p>
-<p>Lazy Append: if checked, for an APPEND operation, the affine shift of the previous core in the splice will be used for the current core, even if they're from different holes. By default, the gap between the previous core's bottom and the current core's top will be computed in scaled depth and used for the current core's affine shift.</p>
-<p>Once input data and options are selected, click Convert. Major steps of the conversion process will be noted in the Log window. If the &quot;Include Debugging Information&quot; checkbox is checked, a far more detailed account of the process is provided, which can be helpful in the case of errors or unexpected outputs.</p>
-<h3 id="splice-measurement-data">Splice Measurement Data</h3>
-<p>Given an affine and splice interval table (SIT), and one or more measurement data files, Feldman will splice each measurement data file, generating a new file including only rows whose Depth is within the range of a splice interval.</p>
-<p>The spliced measurement data is written to the same directory as the input measurement data file, with a &quot;-spliced&quot; suffix. For example, for measurement data files MyProject_XRF.csv and MyProject_MSCL.csv, MyProject_XRF-spliced.csv and MyProject_MSCL-spliced.csv will be generated.</p>
-<p>Three columns are added to the generated file:</p>
-<blockquote>
-<pre><code>  Splice Depth: the CCSF-A depth of the measurement
-  Offset: the affine shift of the core in which the measurement was taken
-  On-Splice: TRUE or FALSE, indicating whether the measurement is on-splice</code></pre>
-</blockquote>
-<p>If the input file contains a &quot;Section ID&quot; column, these columns will be inserted to its right on output. Otherwise they'll be inserted in the leftmost position.</p>
-<p>Click the &quot;...&quot; buttons to select input affine and SIT files.</p>
-<p>Click the &quot;Add/Remove&quot; buttons to add/remove one or more measurement data files to the list.</p>
-<p>Select the column to use as the Depth Column for each measurement data file to be spliced.</p>
-<p>Off Splice: if checked, rows of data that are off-splice are included with On-Splice value FALSE.</p>
-<p>Whole Section Splice: if checked, all rows of data from on-splice core sections will be included with On-Splice value TRUE. For example, consider a splice interval with top section 1 at depth 20cm and bottom section 2 at depth 90cm. If Whole Section is checked, <em>all</em> measurements from section 1 and 2 will be included, even those above 20cm in section 1 and those below 90cm in section 2. Measurements from section 3, however, will <em>not</em> be included because that section isn't part of the splice interval.</p>
-<p>Once input data and options are selected, click Splice Data. Major steps of the splicing process will be noted in the Log window. If the &quot;Include Debugging Information&quot; checkbox is checked, a far more detailed account of the process is provided, which can be helpful in the case of errors or unexpected outputs.</p>
-<h3 id="file-formats">File Formats</h3>
-<p>Feldman reads and writes tabular data files in comma-separated values (CSV) format.</p>
-<p>Templates for all formats can be found in the templates folder alongside the Feldman application. Examples of all formats can be found in the examples folder.</p>
+<h3 id="main-window">Main Window</h3>
+<p><img src="images/mainwindow.png" /></p>
+<p>Output Vocabulary: determines whether the IODP term &quot;Core Type&quot; or the LacCore term &quot;Tool&quot; is used as a column name in output. IODP &quot;Core Type&quot; is the default. Feldman will accept &quot;Core Type&quot; or &quot;Tool&quot; as input regardless of this setting.</p>
+<p>The <a href="#convert-sparse-splice-to-sit">Convert Sparse Splice to SIT</a> and <a href="#splice-measurement-data">Splice Measurement Data</a> buttons open the dialogs of the same name.</p>
+<h3 id="tabular-data-formats">Tabular Data Formats</h3>
+<p>Feldman reads and writes tabular data files exclusively in comma-separated values (CSV) format.</p>
+<p>Microsoft Excel can be used to convert tabular data in other formats (Excel, tab- or space-delimited files, etc.) to CSV using the File &gt; Save As... function and choosing &quot;Comma Separated Values (.csv)&quot; as the output format.</p>
+<p>Templates for all formats can be found in the templates folder alongside the Feldman application. Real-world examples of formats can be found in the examples folder.</p>
 <p>General requirements:</p>
 <ul>
 <li>The first row of a file must be a header row with a name for each column.</li>
@@ -45,14 +25,14 @@
 <pre><code>  Site: An integer &gt; 0 representing the collection site  
   Hole: One or more capital letters (A, B, ..., Y, Z, AA, AB...) representing a single drilled hole  
   Core: An integer &gt; 0 representing an interval of material collected from parent hole  
-  Tool: A single capital letter representing the drilling tool used to collect the core  
+  Core Type or Tool: A single capital letter representing the drilling tool used to collect the core  
   Section: An integer &gt; 0 representing a post-extraction subdivision of a core</code></pre>
 </blockquote>
 <h4 id="section-summary">Section Summary</h4>
 <p>A section summary table contains one row for each section in a project. It is used to translate section depths to total depth, and as a &quot;master list&quot; of a project's core sections. Sections that may not be included in a splice, but are part of measurement data to be spliced, should be included.</p>
 <p>A section summary must include the following columns:</p>
 <blockquote>
-<pre><code>  Identity Columns: Site, Hole, Core, Tool, and Section  
+<pre><code>  Identity Columns: Site, Hole, Core, Core Type/Tool, and Section  
   Top Depth: Top depth of the section, in meters (m)
   Bottom Depth: Bottom depth of the section, in meters (m)
   Top Depth Scaled: Scaled (in situ) top depth of the section, in meters (m) 
@@ -70,7 +50,7 @@
 <p>A sparse splice table contains one row for each interval of a sparse splice. Each interval is defined only in section depths, not total depths. The term &quot;sparse&quot; comes from the lack of total depths.</p>
 <p>A sparse splice table must include the following columns:</p>
 <blockquote>
-<pre><code>  Identity Columns: Site, Hole, Core, and Tool
+<pre><code>  Identity Columns: Site, Hole, Core, and Core Type/Tool
   Top Section: section in which the interval begins
   Top Offset: section depth at which interval beings, in centimeters (cm)
   Bottom Section: section in which the interval ends
@@ -87,7 +67,7 @@
 <p>An affine table contains one row for every core in a project. Each row indicates the core's affine shift distance and associated metadata.</p>
 <p>An affine table must include the following columns:</p>
 <blockquote>
-<pre><code>  Identity Columns: Site, Hole, Core, and Tool
+<pre><code>  Identity Columns: Site, Hole, Core, and Core Type/Tool
   Depth CSF-A: Depth of the top of the core, in meters (m)
   Depth CCSF-A: Shifted/composite depth of the top of the core, in meters (m)
   Offset: Distance of core shift, in meters (m). Positive values indicate a downward shift, negative upward.
@@ -107,7 +87,7 @@
 <h4 id="splice-interval-table-or-sit">Splice Interval Table, or SIT</h4>
 <p>A splice interval table contains one row for each interval of a splice. It is a superset of a sparse splice. In addition to section depths for the top and bottom of each interval, it includes the total depths in CSF-A and CCSF-A.</p>
 <blockquote>
-<pre><code>  Identity Columns: Site, Hole, Core, and Tool
+<pre><code>  Identity Columns: Site, Hole, Core, and Core Type/Tool
   Top Section: section in which the interval begins
   Top Offset: section depth at which interval begins, in centimeters (cm)
   Top Depth CSF-A: total depth at which interval begins, in meters (m)
@@ -142,13 +122,41 @@
   Section2: The on-splice section
   SectionDepth2: Section depth of the on-splice section to be aligned with off-splice section</code></pre>
 </blockquote>
+<p>Note that, unlike other formats, the manual correlation table format requires the use of &quot;Tool1&quot; and &quot;Tool2&quot;. &quot;Core Type 1&quot; and &quot;Core Type 2&quot; are not acceptable column names.</p>
 <h4 id="measurement-data">Measurement Data</h4>
 <p>A measurement data table contains one or more measurements taken at a given depth in a core section.</p>
 <p>A measurement data table must include the following columns:</p>
 <blockquote>
-<pre><code>  Identity Columns: Site, Hole, Core, Tool, Section indicating the source of the measurement(s)
+<pre><code>  Identity Columns: Site, Hole, Core, Core Type/Tool, Section indicating the source of the measurement(s)
   [Depth Column]: total depth of the measurement(s) of the core section, in meters (m). Depths
   in the specified column will be used to determine whether a measurement is within a splice interval.</code></pre>
 </blockquote>
-<p>The Depth Column is selected in the Splice Measurement Data dialog, and can have any name. The only requirement is that the Depth Column must contain only numeric values. If any alphabetic characters are included in a column (other than its name), it cannot be selected as the Depth Column.</p>
-<p>Any number of measurement columns and additional columns (comments etc.) may be included. They will be included unaltered in the output of Splice Measurment Data.</p>
+<p>The Depth Column is selected in the Splice Measurement Data dialog, and can have any name in the input file. The only requirement is that the Depth Column must contain only numeric values. If any alphabetic characters are included in a column (other than its name), it cannot be selected as the Depth Column.</p>
+<p>Any number of measurement columns and additional columns (comments etc.) may be included. They will be included, unaltered, in the output of Splice Measurment Data.</p>
+<h3 id="convert-sparse-splice-to-sit">Convert Sparse Splice to SIT</h3>
+<p>Given a section summary and sparse splice, Feldman will generate an affine table and splice interval table (SIT).</p>
+<p><img src="images/sparseToSIT.png" /></p>
+<p>The generated affine and SIT are written to the same directory as the input sparse splice file. They use the sparse splice's filename plus &quot;-affine&quot; or &quot;-SIT&quot;. For example, for a sparse splice file named MySparseSplice.csv, the resulting affine and SIT are named MySparseSplice-affine.csv and MySparseSplice-SIT.csv, respectively.</p>
+<p>Click the &quot;...&quot; buttons to select section summary and sparse splice files as input.</p>
+<p>By default, Feldman determines the affine offset of off-splice cores by finding the nearest on-splice core in the same hole and using that offset.</p>
+<p>If a manual correlation table is provided, those alignments will be used for off-splice cores rather than the default.</p>
+<p>Use Scaled Depths: if checked, the section summary's scaled depths will be used to map section depth to total depth. Unscaled depths are the default.</p>
+<p>Lazy Append: if checked, for an APPEND operation, the affine shift of the previous core in the splice will be used for the current core, even if they're from different holes. By default, the gap between the previous core's bottom and the current core's top will be computed in scaled depth and used for the current core's affine shift.</p>
+<p>Once input data and options are selected, click Convert. Major steps of the conversion process will be noted in the Log window. If the &quot;Include Debugging Information&quot; checkbox is checked, a far more detailed account of the process is provided, which can be helpful in the case of errors or unexpected outputs.</p>
+<h3 id="splice-measurement-data">Splice Measurement Data</h3>
+<p>Given an affine and splice interval table (SIT), and one or more measurement data files, Feldman will splice each measurement data file, generating a new file including only rows whose Depth is within the range of a splice interval.</p>
+<p><img src="images/spliceMeasurementData.png" /></p>
+<p>The spliced measurement data is written to the same directory as the input measurement data file, with a &quot;-spliced&quot; suffix. For example, for measurement data files MyProject_XRF.csv and MyProject_MSCL.csv, MyProject_XRF-spliced.csv and MyProject_MSCL-spliced.csv will be generated.</p>
+<p>Three columns are added to the generated file:</p>
+<blockquote>
+<pre><code>  Splice Depth: the CCSF-A depth of the measurement
+  Offset: the affine shift of the core in which the measurement was taken
+  On-Splice: TRUE or FALSE, indicating whether the measurement is on-splice</code></pre>
+</blockquote>
+<p>If the input file contains a &quot;Section ID&quot; column, these columns will be inserted to its right on output. Otherwise they'll be inserted in the leftmost position.</p>
+<p>Click the &quot;...&quot; buttons to select input affine and SIT files.</p>
+<p>Click the &quot;Add/Remove&quot; buttons to add/remove one or more measurement data files to the list.</p>
+<p>Select the column to use as the Depth Column for each measurement data file to be spliced.</p>
+<p>Off Splice: if checked, rows of data that are off-splice are included with On-Splice value FALSE.</p>
+<p>Whole Section Splice: if checked, all rows of data from on-splice core sections will be included with On-Splice value TRUE. For example, consider a splice interval with top section 1 at depth 20cm and bottom section 2 at depth 90cm. If Whole Section is checked, <em>all</em> measurements from section 1 and 2 will be included, even those above 20cm in section 1 and those below 90cm in section 2. Measurements from section 3, however, will <em>not</em> be included because that section isn't part of the splice interval.</p>
+<p>Once input data and options are selected, click Splice Data. Major steps of the splicing process will be noted in the Log window. If the &quot;Include Debugging Information&quot; checkbox is checked, a far more detailed account of the process is provided, which can be helpful in the case of errors or unexpected outputs.</p>
