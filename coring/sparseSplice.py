@@ -13,8 +13,8 @@ from tabular.csvio import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 from columns import namesToIds, CoreIdentityCols
 
-Gap = ColumnIdentity("Gap", "Space added before an APPEND of the next interval", [], TabularDatatype.NUMERIC, 'm', optional=True)
-SpliceType = ColumnIdentity("SpliceType", "Type of splice operation: TIE or APPEND", [])
+Gap = ColumnIdentity("Gap", desc="Space added before an APPEND of the next interval", datatype=TabularDatatype.NUMERIC, unit='m', optional=True)
+SpliceType = ColumnIdentity("SpliceType", desc="Type of splice operation: TIE or APPEND")
 
 SparseSpliceColumns = CoreIdentityCols + namesToIds(['TopSection', 'TopOffset', 'BottomSection', "BottomOffset"]) + [SpliceType, Gap] + namesToIds(['DataUsed', 'Comment'])  
 SparseSpliceFormat = TabularFormat("Sparse Splice", SparseSpliceColumns)

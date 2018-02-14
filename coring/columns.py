@@ -7,18 +7,19 @@ Created on Jan 24, 2018
 from tabular.columns import TabularDatatype, ColumnIdentity
 
 # core identity elements
-ColumnDict = {'Project': ColumnIdentity("Project", "Project, expedition, cruise or another high-level identifier", ["Exp", "Name", "Expedition", "Proj", "Cruise"]),
-              'Site': ColumnIdentity("Site", "Location of core collection", ["Location"]),
-              'Hole': ColumnIdentity("Hole", "Penetration from which one or more cores are collected", ["Track"]),
-              'Core': ColumnIdentity("Core", "Material collected in a single drive", ["Drive"]),
-              'Tool': ColumnIdentity("Tool", "Identifier of tool used to collect a core", ["Core Type", "Type"]),
-              'Section': ColumnIdentity("Section", "Subdivision of core performed post-extraction", []),
-              'TopSection': ColumnIdentity("TopSection", "Top section of an interval", []),
-              'BottomSection': ColumnIdentity("BottomSection", "Bottom section of an interval", []),
-              'TopOffset': ColumnIdentity("TopOffset", "Section depth at the top of an interval", [], TabularDatatype.NUMERIC, 'cm'),
-              'BottomOffset': ColumnIdentity("BottomOffset", "Section depth at the top of an interval", [], TabularDatatype.NUMERIC, 'cm'),
-              'Comment': ColumnIdentity("Comment", "Comments", ["Quality Comment", "Quality Comments", "Comments", "Notes", "Remarks"], optional=True),
-              'DataUsed': ColumnIdentity("DataUsed", "Datatype used to determine e.g. a tie point", ["Data"], optional=True)
+# TODO? define in external resource file instead of hard-coding here?
+ColumnDict = {'Project': ColumnIdentity("Project", ["Exp", "Name", "Expedition", "Proj", "Cruise"], desc="Project, expedition, cruise or another high-level identifier"),
+              'Site': ColumnIdentity("Site", ["Location"], desc="Location of core collection"),
+              'Hole': ColumnIdentity("Hole", ["Track"], desc="Penetration from which one or more cores are collected"),
+              'Core': ColumnIdentity("Core", ["Drive"], desc="Material collected in a single drive"),
+              'Tool': ColumnIdentity("Tool", ["Core Type", "Type"], orgNames={'IODP':"Core Type", 'LacCore':"Tool"}, desc="Identifier of tool used to collect a core"),
+              'Section': ColumnIdentity("Section", desc="Subdivision of core performed post-extraction"),
+              'TopSection': ColumnIdentity("TopSection", desc="Top section of an interval"),
+              'BottomSection': ColumnIdentity("BottomSection", desc="Bottom section of an interval"),
+              'TopOffset': ColumnIdentity("TopOffset", desc="Section depth at the top of an interval", datatype=TabularDatatype.NUMERIC, unit='cm'),
+              'BottomOffset': ColumnIdentity("BottomOffset", desc="Section depth at the top of an interval", datatype=TabularDatatype.NUMERIC, unit='cm'),
+              'Comment': ColumnIdentity("Comment", ["Quality Comment", "Quality Comments", "Comments", "Notes", "Remarks"], desc="Comments", optional=True),
+              'DataUsed': ColumnIdentity("DataUsed", ["Data"], desc="Datatype used to determine e.g. a tie point", optional=True)
 }
 
 CoreIdentityCols = [ColumnDict[col] for col in ['Site', 'Hole', 'Core', 'Tool']]

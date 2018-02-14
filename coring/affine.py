@@ -13,15 +13,15 @@ from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 from columns import namesToIds, CoreIdentityCols
 
 
-DepthCSF = ColumnIdentity("DepthCSF", "Depth below sea floor", ["Depth CSF-A", "Depth MBSF", "Depth MBLF"], TabularDatatype.NUMERIC, 'm')
-DepthCCSF = ColumnIdentity("DepthCCSF", "Composite depth below sea floor", ["Depth CCSF-A", "Depth MCD"], TabularDatatype.NUMERIC, 'm')
-Offset = ColumnIdentity("Offset", "Difference between a core's CSF-A and CCSF-A depth", ["Cumulative Offset", "Total Offset"], TabularDatatype.NUMERIC, 'm')
-DifferentialOffset = ColumnIdentity("DifferentialOffset", "Difference between offset of current core and preceding core in hole", [], TabularDatatype.NUMERIC, 'm', optional=True)
-GrowthRate = ColumnIdentity("GrowthRate", "Ratio of core's CSF-A : CCSF-A depths", [], TabularDatatype.NUMERIC, optional=True)
-ShiftType = ColumnIdentity("ShiftType", "Core's affine shift type: TIE, SET, REL or ANCHOR", ["Affine Type", "Shift"])
-FixedCore = ColumnIdentity("FixedCore", "For a core shifted by a TIE, the Hole + Core (e.g. B13) of the fixed core", [], optional=True)
-FixedTieCSF =  ColumnIdentity("FixedTieCSF", "CSF depth of the TIE point on the fixed core", ["Fixed Tie CSF-A"], TabularDatatype.NUMERIC, 'm', optional=True)
-ShiftedTieCSF = ColumnIdentity("ShiftedTieCSF", "CSF depth of the TIE point on the shifted core", ["Shifted Tie CSF-A"], TabularDatatype.NUMERIC, 'm', optional=True)
+DepthCSF = ColumnIdentity("DepthCSF", ["Depth CSF-A", "Depth MBSF", "Depth MBLF"], orgNames={'IODP':'Depth CSF-A'}, desc="Depth below sea floor", datatype=TabularDatatype.NUMERIC, unit='m')
+DepthCCSF = ColumnIdentity("DepthCCSF", ["Depth CCSF-A", "Depth MCD"], orgNames={'IODP':'Depth CCSF-A'}, desc="Composite depth below sea floor", datatype=TabularDatatype.NUMERIC, unit='m')
+Offset = ColumnIdentity("Offset", ["Cumulative Offset", "Total Offset"], orgNames={'IODP':'Cumulative Offset'}, desc="Difference between a core's CSF-A and CCSF-A depth", datatype=TabularDatatype.NUMERIC, unit='m')
+DifferentialOffset = ColumnIdentity("DifferentialOffset", orgNames={'IODP':"Differential Offset"}, desc="Difference between offset of current core and preceding core in hole", datatype=TabularDatatype.NUMERIC, unit='m', optional=True)
+GrowthRate = ColumnIdentity("GrowthRate", desc="Ratio of core's CSF-A : CCSF-A depths", datatype=TabularDatatype.NUMERIC, optional=True)
+ShiftType = ColumnIdentity("ShiftType", ["Affine Type", "Shift"], desc="Core's affine shift type: TIE, SET, REL or ANCHOR")
+FixedCore = ColumnIdentity("FixedCore", desc="For a core shifted by a TIE, the Hole + Core (e.g. B13) of the fixed core", optional=True)
+FixedTieCSF =  ColumnIdentity("FixedTieCSF", ["Fixed Tie CSF-A"], orgNames={'IODP':"Fixed Tie CSF-A"}, desc="CSF depth of the TIE point on the fixed core", datatype=TabularDatatype.NUMERIC, unit='m', optional=True)
+ShiftedTieCSF = ColumnIdentity("ShiftedTieCSF", ["Shifted Tie CSF-A"], orgNames={'IODP':'Shifted Tie CSF-A'}, desc="CSF depth of the TIE point on the shifted core", datatype=TabularDatatype.NUMERIC, unit='m', optional=True)
 
 FormatSpecificCols = [DepthCSF, DepthCCSF, Offset, DifferentialOffset, GrowthRate, ShiftType, FixedCore, FixedTieCSF, ShiftedTieCSF]
 

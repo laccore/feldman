@@ -12,12 +12,12 @@ from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 from columns import namesToIds, CoreIdentityCols
 
 
-TopDepthCSF = ColumnIdentity("TopDepthCSF", "Depth of splice interval top", ["Top Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
-TopDepthCCSF = ColumnIdentity("TopDepthCCSF", "Composite depth of splice interval top", ["Top Depth CCSF-A"], TabularDatatype.NUMERIC, 'm')
-BottomDepthCSF = ColumnIdentity("BottomDepthCSF", "Depth of splice interval bototm", ["Bottom Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
-BottomDepthCCSF = ColumnIdentity("BottomDepthCCSF", "Composite depth of splice interval bottom", ["Bottom Depth CCSF-A"], TabularDatatype.NUMERIC, 'm')
-SpliceType = ColumnIdentity("SpliceType", "Type of splice operation: TIE or APPEND", [])
-Gap = ColumnIdentity("Gap", "Space added before an APPEND of the next interval", [], TabularDatatype.NUMERIC, 'm', optional=True)
+TopDepthCSF = ColumnIdentity("TopDepthCSF", ["Top Depth CSF-A"], orgNames={'IODP':"Top Depth CSF-A"}, desc="Depth of splice interval top", datatype=TabularDatatype.NUMERIC, unit='m')
+TopDepthCCSF = ColumnIdentity("TopDepthCCSF", ["Top Depth CCSF-A"], orgNames={'IODP':"Top Depth CCSF-A"}, desc="Composite depth of splice interval top", datatype=TabularDatatype.NUMERIC, unit='m')
+BottomDepthCSF = ColumnIdentity("BottomDepthCSF", ["Bottom Depth CSF-A"], orgNames={'IODP':"Bottom Depth CSF-A"}, desc="Depth of splice interval bottom", datatype=TabularDatatype.NUMERIC, unit='m')
+BottomDepthCCSF = ColumnIdentity("BottomDepthCCSF", ["Bottom Depth CCSF-A"], orgNames={'IODP':"Bottom Depth CCSF-A"}, desc="Composite depth of splice interval bottom", datatype=TabularDatatype.NUMERIC, unit='m')
+SpliceType = ColumnIdentity("SpliceType", desc="Type of splice operation: TIE or APPEND")
+Gap = ColumnIdentity("Gap", desc="Space added before an APPEND of the next interval", datatype=TabularDatatype.NUMERIC, unit='m', optional=True)
 
 
 SITColumns = CoreIdentityCols + namesToIds(['TopSection', 'TopOffset']) + [TopDepthCSF, TopDepthCCSF] + \
@@ -81,7 +81,7 @@ class SpliceIntervalTable:
         if corerow is None or len(corerow) == 0:
             return False
         if len(corerow) > 1:
-            print "SIT {} contains more than one matching core, WTF???".format(core)
+            print "SIT {} contains more than one matching core".format(core)
         return True
     
     def getCore(self, site, hole, core):

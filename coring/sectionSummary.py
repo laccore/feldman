@@ -15,12 +15,12 @@ import tabular.pandasutils as PU
 from columns import SectionIdentityCols
 
 # format-specific columns
-TopDepth = ColumnIdentity("TopDepth", "Top drilled depth of a core (CSF-A)", ["TopDepthUnscaled", "Top Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
-BottomDepth = ColumnIdentity("BottomDepth", "Bottom drilled depth of a core (CSF-A)", ["BottomDepthUnscaled", "Bottom Depth CSF-A"], TabularDatatype.NUMERIC, 'm')
-TopDepthScaled = ColumnIdentity("TopDepthScaled", "Top drilled depth of a core, scaled (CSF-B)", ["Top Depth CSF-B"], TabularDatatype.NUMERIC, 'm')
-BottomDepthScaled = ColumnIdentity("BottomDepthScaled", "Bottom drilled depth of a core, scaled (CSF-B)", ["Bottom Depth CSF-B"], TabularDatatype.NUMERIC, 'm')
-CuratedLength = ColumnIdentity("CuratedLength", "Length of core or section as measured post-extraction", [], TabularDatatype.NUMERIC, 'm')
-Gaps = ColumnIdentity("Gaps", "Section intervals to be treated as gaps: 0+ pairs of form top1-bot1 top2-bot2...", [], TabularDatatype.STRING, 'cm', optional=True)
+TopDepth = ColumnIdentity("TopDepth", ["TopDepthUnscaled", "Top Depth CSF-A"], desc="Top drilled depth of a core (CSF-A)", datatype=TabularDatatype.NUMERIC, unit='m')
+BottomDepth = ColumnIdentity("BottomDepth", ["BottomDepthUnscaled", "Bottom Depth CSF-A"], desc="Bottom drilled depth of a core (CSF-A)", datatype=TabularDatatype.NUMERIC, unit='m')
+TopDepthScaled = ColumnIdentity("TopDepthScaled", ["Top Depth CSF-B"], desc="Top drilled depth of a core, scaled (CSF-B)", datatype=TabularDatatype.NUMERIC, unit='m')
+BottomDepthScaled = ColumnIdentity("BottomDepthScaled", ["Bottom Depth CSF-B"], desc="Bottom drilled depth of a core, scaled (CSF-B)", datatype=TabularDatatype.NUMERIC, unit='m')
+CuratedLength = ColumnIdentity("CuratedLength", ["Length"], desc="Length of core or section as measured post-extraction", datatype=TabularDatatype.NUMERIC, unit='m')
+Gaps = ColumnIdentity("Gaps", desc="Section intervals to be treated as gaps: 0+ pairs of form top1-bot1 top2-bot2...", unit='cm', optional=True)
 
 SectionSummaryColumns = SectionIdentityCols + [TopDepth, BottomDepth, TopDepthScaled, BottomDepthScaled, CuratedLength, Gaps]
 SectionSummaryFormat = TabularFormat("Section Summary", SectionSummaryColumns)

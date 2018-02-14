@@ -22,13 +22,15 @@ class TabularFormat:
     def getColumnNames(self):
         return [c.name for c in self.cols]
 
+
 class ColumnIdentity:
-    def __init__(self, name, desc, synonyms, datatype=TabularDatatype.STRING, unit="", optional=False):
-        self.name = name # standard name
+    def __init__(self, name, synonyms=None, orgNames=None, desc="[column description]", datatype=TabularDatatype.STRING, unit="", optional=False):
+        self.name = name # internal column name
+        self.synonyms = synonyms if synonyms else [] # list of equivalent names
+        self.orgNames = orgNames if orgNames else {} # dict of organization : canonical column name pairs        
         self.desc = desc
-        self.synonyms = synonyms
-        self.unit = unit # expected unit e.g. 'm' or None
         self.datatype = datatype # expected datatype
+        self.unit = unit # expected unit e.g. 'm'
         self.optional = optional
         
     def names(self):
@@ -43,17 +45,34 @@ class ColumnIdentity:
     def isNumeric(self):
         return self.datatype == TabularDatatype.NUMERIC
     
+    # return org-specific name
+    def orgName(self, org='IODP'):
+        return self.orgNames[org] if org in self.orgNames else None
+    
+    # weird logic: return org-specific name if present,
+    # otherwise default (IODP), or if orgNames is empty, space_caps() of name 
+    def prettyName(self, orgkey=None):
+        name = self.orgName(orgkey)
+        if not name:
+            name = self.orgName()
+        if not name:
+            name = space_caps(self.name)
+        return name
+    
     def getDefaultValue(self):
         return "" if self.isString() else float('nan')
     
     def __repr__(self):
         return "cid:" + self.name
 
-# split colname where lowercase is followed by uppercase, ignoring spaces
-# e.g. "FooBar" and "Foo Bar" both return ["Foo", "Bar"] 
+# remove all existing spaces, then insert a single space where lowercase is
+# followed by uppercase, e.g. "FooBar", "Foo Bar", and "Foo    Bar" all return "Foo Bar" 
+def space_caps(colname):
+    return re.sub(r"([a-z])([A-Z])", r"\1 \2", colname.replace(' ', ''))
+
+# return list of space-delimited strings from space_caps()
 def split_caps(colname):
-    spaced = re.sub(r"([a-z])([A-Z])", r"\1 \2", colname.replace(' ', ''))
-    return spaced.split(" ")
+    return space_caps(colname).split(" ")
 
 # remove parenthesized substrings from colname
 def strip_unit(colname):
@@ -122,9 +141,9 @@ class Tests(unittest.TestCase):
         self.assertTrue(las("  Column (counts/sec) () ") == 'column')
         
     def test_map_columns(self):
-        FooCol = ColumnIdentity("Foo", "", ["Fu", "Phooey"])
-        BarCol = ColumnIdentity("Bar", "", ["Bear", "Tavern"])
-        BazCol = ColumnIdentity("Baz", "", ["Bizarre", "Boz"])
+        FooCol = ColumnIdentity("Foo", ["Fu", "Phooey"])
+        BarCol = ColumnIdentity("Bar", ["Bear", "Tavern"])
+        BazCol = ColumnIdentity("Baz", ["Bizarre", "Boz"])
         TestFormat = [FooCol, BarCol, BazCol]
 
         icols = ["Foo", "Bar", "Baz"] # standard column names
@@ -133,6 +152,21 @@ class Tests(unittest.TestCase):
         icols = [" phooey ", "TAVERN (m)", "biz arre"] # handle synonyms, funky case, spacing, unit
         m = map_columns(TestFormat, icols)
         self.assertTrue(len(m) == 3)
+        
+    def test_pretty_name(self):
+        Col = ColumnIdentity("ShortA", [], {'A':"Pretty A Name", 'IODP':"Purty B Name"})
+        self.assertTrue(Col.prettyName("A") == "Pretty A Name")
+        self.assertTrue(Col.prettyName() == "Purty B Name")
+        Col.orgNames = {}
+        self.assertTrue(Col.prettyName() == "Short A")
+
+    def test_space_caps(self):
+        self.assertTrue(space_caps("AbeBobCarl") == "Abe Bob Carl")
+        self.assertTrue(space_caps("abeBobcarL") == "abe Bobcar L")
+        self.assertTrue(space_caps("noupper") == "noupper")
+        self.assertTrue(space_caps("Abe Bob") == "Abe Bob")
+        self.assertTrue(space_caps("Abraham") == "Abraham")
+        self.assertTrue(space_caps("") == "")
     
     def test_split_caps(self):
         self.assertTrue(split_caps("AbeBobCarl") == ["Abe", "Bob", "Carl"])

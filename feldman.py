@@ -88,7 +88,8 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     affDF = pandas.DataFrame(arDicts, columns=aff.AffineFormat.getColumnNames())
     log.info("writing affine table to {}".format(os.path.abspath(affineOutPath)))
     log.debug("affine table column types:\n{}".format(affDF.dtypes))
-    affDF.to_csv(affineOutPath, index=False)
+    prettyColumns(affDF, aff.AffineFormat)
+    writeToCSV(affDF, affineOutPath)
     
     log.info("Conversion complete.")
 
@@ -208,14 +209,13 @@ def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepth
     
     # done parsing, create final dataframe for export
     sitDF = sparse.dataframe.copy()
-    sitDF.insert(6, 'Top Depth CSF-A', pandas.Series(topCSFs))
-    sitDF.insert(7, 'Top Depth CCSF-A', pandas.Series(topCCSFs))
-    sitDF.insert(10, 'Bottom Depth CSF-A', pandas.Series(botCSFs))
-    sitDF.insert(11, 'Bottom Depth CCSF-A', pandas.Series(botCCSFs))
+    PU.insertColumns(sitDF, 6, [(si.TopDepthCSF.name, pandas.Series(topCSFs)), (si.TopDepthCCSF.name, pandas.Series(topCCSFs))])
+    PU.insertColumns(sitDF, 10, [(si.BottomDepthCSF.name, pandas.Series(botCSFs)), (si.BottomDepthCCSF.name, pandas.Series(botCCSFs))])
     
     log.info("writing splice interval table to {}".format(os.path.abspath(sitOutPath)))
     log.debug("splice interval table column types:{}".format(sitDF.dtypes))
-    sitDF.to_csv(sitOutPath, index=False)
+    prettyColumns(sitDF, si.SITFormat)
+    writeToCSV(sitDF, sitOutPath)
     
     return affineRows
 
@@ -427,7 +427,12 @@ def fillAffineRows(affineRows):
                 row.growthRate = 0.0
     
     return sortedRows
-    
+
+# Rename columns in dataframe from their format's internal name to their
+# pretty name if the internal name is in the dataframe.
+def prettyColumns(dataframe, fmt, org=None):
+    colmap = {c.name: c.prettyName(org) for c in fmt.cols if c.name in dataframe}
+    PU.renameColumns(dataframe, colmap)
     
 def appendDate(text):
     return text + "_{}".format(date.today().isoformat())
