@@ -238,6 +238,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             gui.warnbox(self, "No Measurement Data", "At least one Measurement Data file is required.")
             return
         
+        # gather and validate paths
         try:
             affinePath = self.affineFile.getPath()
             validatePath(affinePath, "Affine")
@@ -255,6 +256,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
         self.spliceButton.setText("Splicing Data...")
         self.spliceButton.setEnabled(False)
         
+        # splice measurement data
         try:
             logging.getLogger().addHandler(self.logText)
             self.logText.setLevel(logging.DEBUG if self.logText.isVerbose() else logging.INFO)
@@ -262,7 +264,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             self.logText.logText.clear()
             for mdPath, depthColumn, includeOffSplice, wholeSpliceSection in spliceParams:
                 outPath = os.path.splitext(mdPath)[0] + "-spliced.csv"
-                feldman.exportMeasurementData(affinePath, sitPath, mdPath, outPath, includeOffSplice, wholeSpliceSection, depthColumn)
+                feldman.exportMeasurementData(affinePath, sitPath, mdPath, outPath, depthColumn, includeOffSplice, wholeSpliceSection)
         except KeyError as err:
             gui.warnbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
             logging.error(traceback.format_exc())

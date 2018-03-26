@@ -233,9 +233,10 @@ def _spliceShiftToAffine(spliceShift, gap):
 
 
 # todo: MeasDataDB class that hides multi-file (broken into holes) vs single-file data
+# - depthColumn: name of column with depths to be used for splicing data
 # - includeOffSplice: if True, all off-splice rows in mdPath will be included in export with 'On-Splice' value = FALSE 
 # - wholeSpliceSection: if True, all rows in all sections included in a splice interval will be exported as 'On-Splice' 
-def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSplice=True, wholeSpliceSection=False, depthColumn='Depth'):
+def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, includeOffSplice=True, wholeSpliceSection=False):
     log.info("--- Splicing Measurement Data ---")
     log.info("{}".format(datetime.now()))
     log.info("Using Affine Table {}".format(affinePath))
@@ -246,8 +247,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
     
     affine = aff.AffineTable.createWithFile(affinePath)
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
-    md = meas.MeasurementData.createWithFile(mdPath)
-    PU.renameColumns(md.df, {depthColumn:'Depth'})
+    md = meas.MeasurementData.createWithFile(mdPath, depthColumn)
     log.info("Loaded {} rows of data from {}".format(len(md.df.index), mdPath))
     log.debug(md.df.dtypes)
 
@@ -267,7 +267,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
         else:
             mdrows = md.getByRangeFullID(sirow.topCSF, sirow.botCSF, sirow.site, sirow.hole, sirow.core, sections)
         #print mdrows
-        #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdrows), mdrows.iloc[0]['Depth'], mdrows.iloc[-1]['Depth'])
+        #print "   found {} rows, top depth = {}, bottom depth = {}".format(len(mdrows), mdrows.iloc[0][depthColumn], mdrows.iloc[-1][depthColumn])
         
         if len(mdrows) > 0:
             affineOffset = sirow.topCCSF - sirow.topCSF
@@ -317,7 +317,6 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, includeOffSpl
 
 # rename and add columns in spliced measurement data per LacCore requirements
 def _prepSplicedRowsForExport(dataframe, rows, depthColumn, offset, onSplice):
-    PU.renameColumns(rows, {'Depth':depthColumn})
     idIndex = PU.getColumnIndex(dataframe, 'SectionID')
     if not idIndex: # if SectionID is missing, insert at the beginning
         idIndex = 0
@@ -479,4 +478,4 @@ if __name__ == "__main__":
 #     for mdPath in mdFilePaths:
 #         path, ext = os.path.splitext(mdPath)
 #         exportPath = path + "_spliced" + ext
-#         exportMeasurementData(affinePath, sitPath, mdPath, exportPath, wholeSpliceSection=False)
+#         exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, includeOffSplice=False, wholeSpliceSection=False)
