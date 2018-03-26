@@ -32,7 +32,7 @@ OutputVocabulary = 'IODP'
 def openCorrelatorFunkyFormatFile(filename):
     datfile = open(filename, 'rU')
     headers = ["Exp", "Site", "Hole", "Core", "CoreType", "Section", "TopOffset", "BottomOffset", "Depth", "Data", "RunNo"]
-    df = pandas.read_csv(datfile, header=None, names=headers, sep=" \t", skipinitialspace=True, comment="#", engine='python')
+    _df = pandas.read_csv(datfile, header=None, names=headers, sep=" \t", skipinitialspace=True, comment="#", engine='python')
     datfile.close()
     #print df.dtypes
     # df can now be written to a normal CSV
@@ -110,11 +110,10 @@ def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepth
     botCCSFs = []
     prevAffine = 0.0 # previous affine shift (used for APPEND shift)
     prevBotCCSF = None
-    prevRow = None # previous interval's row, data needed for inter-hole default APPEND gap method
+    prevRow = {} # previous interval's row, data needed for inter-hole default APPEND gap method
     sptype = None
     gap = None
-    
-    # todo: create SpliceIntervalRows and return along with AffineRows
+
     for index, row in sparse.dataframe.iterrows():
         log.debug("Interval {}".format(index + 1))
         site = row['Site']
@@ -145,7 +144,7 @@ def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepth
                 affine = gapEndDepth - shiftTop
                 log.debug("User specified gap of {}m between previous bottom ({}m) and current top ({}m), affine = {}m".format(gap, prevBotCCSF, shiftTop, affine))
             else: # default gap
-                assert prevRow is not None
+                assert len(prevRow) > 0
                 if hole == prevRow['Hole'] or lazyAppend: # hole hasn't changed, use same affine shift
                     affine = prevAffine
                     log.debug("APPENDing {} at depth {} based on previous affine {}".format(shiftTop, shiftTop + affine, affine))
