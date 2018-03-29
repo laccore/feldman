@@ -12,6 +12,7 @@ import feldman
 import gui
 import prefs
 import tabular.pandasutils as PU
+import tracker
 
 class InvalidPathError(Exception):
     pass
@@ -32,6 +33,7 @@ class MainWindow(QtWidgets.QWidget):
         self.app = app
         self.initGUI()
         self.initPrefs()
+        self.pingTracker()
             
     def updateVocabulary(self, text):
         if text == "IODP (Core Type)":
@@ -75,6 +77,11 @@ class MainWindow(QtWidgets.QWidget):
         geom = self.prefs.get("windowGeometry", None)
         if geom is not None:
             self.setGeometry(geom)
+
+    def pingTracker(self):
+        uuidPath = os.path.join(user.home, ".feldman", "uuid.p") # .feldman dir created in initPrefs()
+        gatracker = tracker.Tracker(uuidPath, ["UA", "116679909", "1"])
+        gatracker.ping()
     
     def savePrefs(self):
         self.prefs.set("windowGeometry", self.geometry())
