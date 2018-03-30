@@ -1,1 +1,1 @@
-feldman will bring you joy - eventually.
+Feldman is a software utility developed by LacCore/CSDCO to simplify the creation of a composite depth scale (CCSF-A) by aligning matching features in core sections across two or more holes, resulting in an affine table and a splice interval table (SIT). The affine and splice can then be applied to measurement data, exporting only those measurements that fall within splice intervals.
