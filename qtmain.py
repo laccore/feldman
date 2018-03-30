@@ -31,15 +31,15 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self, app):
         QtWidgets.QWidget.__init__(self)
         self.app = app
+        self.outputVocabDict = {"IODP": "IODP (Core Type)", "LacCore": "LacCore (Tool)"}
+
         self.initGUI()
         self.initPrefs()
         self.pingTracker()
             
     def updateVocabulary(self, text):
-        if text == "IODP (Core Type)":
-            feldman.OutputVocabulary = "IODP"
-        else:
-            feldman.OutputVocabulary = "LacCore"
+        vocabkey = [k for k,v in self.outputVocabDict.items() if v == text][0]
+        feldman.OutputVocabulary = vocabkey
 
     def initGUI(self):
         self.setWindowTitle("Feldman {}".format(feldman.FeldmanVersion))
@@ -47,7 +47,7 @@ class MainWindow(QtWidgets.QWidget):
         vlayout = QtWidgets.QVBoxLayout(self)
         self.orgLabel = QtWidgets.QLabel("Output Vocabulary:")
         self.orgCombo = QtWidgets.QComboBox()
-        self.orgCombo.addItems(["IODP (Core Type)", "LacCore (Tool)"])
+        self.orgCombo.addItems(self.outputVocabDict.values())
         self.orgCombo.currentTextChanged.connect(self.updateVocabulary)
         hlayout = QtWidgets.QHBoxLayout()
         hlayout.addStretch(1) # center label + combo
@@ -77,6 +77,8 @@ class MainWindow(QtWidgets.QWidget):
         geom = self.prefs.get("windowGeometry", None)
         if geom is not None:
             self.setGeometry(geom)
+        vocab = self.prefs.get("outputVocabulary", "IODP")
+        self.orgCombo.setCurrentText(self.outputVocabDict[vocab])
 
     def pingTracker(self):
         uuidPath = os.path.join(user.home, ".feldman", "uuid.p") # .feldman dir created in initPrefs()
@@ -85,6 +87,7 @@ class MainWindow(QtWidgets.QWidget):
     
     def savePrefs(self):
         self.prefs.set("windowGeometry", self.geometry())
+        self.prefs.set("outputVocabulary", feldman.OutputVocabulary)
         self.prefs.write()
         
     def sparseToSit(self):
