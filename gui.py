@@ -186,6 +186,7 @@ class FileTablePanel(QtWidgets.QWidget):
         self.table.setCellWidget(row, 2, self._makeCheckboxLayout(offSpliceTip))
         wholeSpliceTip = "All rows in a splice interval's section, including those outside the interval's depth range, will be included with On-Splice = 'splice'."
         self.table.setCellWidget(row, 3, self._makeCheckboxLayout(wholeSpliceTip))
+        self.table.resizeColumnToContents(1) # display full width of all dropdowns
     
     # To center a checkbox in a QTableWidget cell, courtesy of stackoverflow 
     def _makeCheckboxLayout(self, tooltip):
