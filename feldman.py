@@ -233,8 +233,8 @@ def _spliceShiftToAffine(spliceShift, gap):
 
 # todo: MeasDataDB class that hides multi-file (broken into holes) vs single-file data
 # - depthColumn: name of column with depths to be used for splicing data
-# - includeOffSplice: if True, all off-splice rows in mdPath will be included in export with 'On-Splice' value = FALSE 
-# - wholeSpliceSection: if True, all rows in all sections included in a splice interval will be exported as 'On-Splice' 
+# - includeOffSplice: if True, all off-splice rows in mdPath will be included in export with 'On-Splice' value = 'off-splice'
+# - wholeSpliceSection: if True, all rows in all sections included in a splice interval are exported as 'On-Splice' = 'splice'
 def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, includeOffSplice=True, wholeSpliceSection=False):
     log.info("--- Splicing Measurement Data ---")
     log.info("{}".format(datetime.now()))
@@ -319,7 +319,8 @@ def _prepSplicedRowsForExport(dataframe, rows, depthColumn, offset, onSplice):
     idIndex = PU.getColumnIndex(dataframe, 'SectionID')
     if not idIndex: # if SectionID is missing, insert at the beginning
         idIndex = 0
-    nameValuesList = [('Splice Depth', pandas.Series(rows[depthColumn] + offset)), ('Offset', offset), ('On-Splice', str(onSplice).upper())]
+    onSpliceStr = 'splice' if onSplice else 'off-splice'
+    nameValuesList = [('Splice Depth', pandas.Series(rows[depthColumn] + offset)), ('Offset', offset), ('On-Splice', onSpliceStr)]
     PU.insertColumns(rows, idIndex + 1, nameValuesList) 
     
 

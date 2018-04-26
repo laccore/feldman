@@ -182,9 +182,9 @@ class FileTablePanel(QtWidgets.QWidget):
         depthCombo = QtWidgets.QComboBox()
         depthCombo.addItems(depthColumns)
         self.table.setCellWidget(row, 1, depthCombo)
-        offSpliceTip = "All off-splice rows will be included in spliced data with On-Splice = FALSE."
+        offSpliceTip = "All off-splice rows will be included in spliced data with On-Splice = 'off-splice'."
         self.table.setCellWidget(row, 2, self._makeCheckboxLayout(offSpliceTip))
-        wholeSpliceTip = "All rows in a splice interval's sections, including those outside the interval's depth range, will be included with On-Splice = TRUE."
+        wholeSpliceTip = "All rows in a splice interval's section, including those outside the interval's depth range, will be included with On-Splice = 'splice'."
         self.table.setCellWidget(row, 3, self._makeCheckboxLayout(wholeSpliceTip))
     
     # To center a checkbox in a QTableWidget cell, courtesy of stackoverflow 
