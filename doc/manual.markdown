@@ -1,12 +1,15 @@
 Feldman User's Guide
 --------------------
-*February 14, 2018*
-*version 0.0.3*
+*April 27, 2018*
+*version 1.0.1*
 
 ### Introduction
 
-Feldman is a software utility developed by LacCore/CSDCO to simplify the process of
-aligning and splicing core sections, and exporting measurement data based on a splice.
+Feldman is a software utility developed by [LacCore/CSDCO](https://csdco.umn.edu) to aid in the process of
+aligning and splicing core sections from multiple holes, and exporting measurement data based on a splice.
+
+Feldman is written in Python, and owes much of its functionality to the wonderful [pandas](https://pandas.pydata.org)
+data analysis library. Feldman source code is available on [GitHub](https://github.com/laccore/feldman).
 
 ### Main Window
 ![](images/mainwindow.png)
@@ -35,7 +38,7 @@ General requirements:
 *	All subsequent rows must be data rows; no additional rows (e.g. units, comments) are allowed.
 *	Spaces, case, and parenthesized units are ignored when checking required columns.
 	For example, "Top Depth", "Top Depth (m)", and "topdepth" are all valid names for the required Section Summary "Top Depth" column.  
-*   One or more non-required columns are allowed if their names are unique.
+*   Non-required columns are allowed as long as their names are distinct from required column names.
 *   Columns can be in any order.
 
 #### Identity Columns
@@ -170,7 +173,8 @@ A measurement data table must include the following columns:
 
 >		Identity Columns: Site, Hole, Core, Core Type/Tool, Section indicating the source of the measurement(s)
 >		[Depth Column]: total depth of the measurement(s) of the core section, in meters (m). Depths
->		in the specified column will be used to determine whether a measurement is within a splice interval.
+>		in the specified column will be compared to depths in the Splice Interval Table to determine
+>		whether a measurement is within a given splice interval.
 
 The Depth Column is selected in the Splice Measurement Data dialog, and can have any name in the input file. The only
 requirement is that the Depth Column must contain only numeric values. If any alphabetic characters
@@ -221,29 +225,34 @@ the range of a splice interval.
 
 ![](images/spliceMeasurementData.png)
 
-The spliced measurement data is written to the same directory as the input measurement data file,
-with a "-spliced" suffix. For example, for measurement data files MyProject_XRF.csv and MyProject_MSCL.csv,
+Spliced measurement data is written to the same directory as the input measurement data file,
+with "-spliced" appended to the input file's name. For example, for measurement data files
+MyProject_XRF.csv and MyProject_MSCL.csv,
 MyProject_XRF-spliced.csv and MyProject_MSCL-spliced.csv will be generated.
 
 Three columns are added to the generated file:
 
 >		Splice Depth: the CCSF-A depth of the measurement
 >		Offset:	the affine shift of the core in which the measurement was taken
->		On-Splice: TRUE or FALSE, indicating whether the measurement is on-splice
+>		On-Splice: 'splice' or 'off-splice', indicating whether the measurement is on- or off-splice, respectively
 
-If the input file contains a "Section ID" column, these columns will be inserted
-to its right on output. Otherwise they'll be inserted in the leftmost position. 
+If the input file contains one or more columns starting with "Sediment Depth", these columns will be inserted
+immediately after the rightmost "Sediment Depth" column on output. Otherwise they'll be inserted in the
+leftmost position.
 
 Click the "..." buttons to select input affine and SIT files.
 
 Click the "Add/Remove" buttons to add/remove one or more measurement data files to the list.
 
-Select the column to use as the Depth Column for each measurement data file to be spliced.
+Select the column to use as the Depth Column for each measurement data file to be spliced. Only
+those columns with numeric values will be included in this list.
 
-Off Splice: if checked, rows of data that are off-splice are included with On-Splice value FALSE.
+Off Splice: if checked, rows of data that are off-splice are included with On-Splice value 'off-splice'.
+If the input measurement data file contains rows from sections that are not part of the input affine
+table, such rows will be written to a file with "-unwritten" appended to the input file's name.
 
 Whole Section Splice: if checked, all rows of data from on-splice core sections will be included
-with On-Splice value TRUE. For example, consider a splice interval with
+with On-Splice value 'splice'. For example, consider a splice interval with
 top section 1 at depth 20cm and bottom section 2 at depth 90cm. If Whole Section is checked,
 *all* measurements from section 1 and 2 will be included, even those above 20cm in section 1
 and those below 90cm in section 2. Measurements from section 3, however, will *not* be included
@@ -252,5 +261,7 @@ because that section isn't part of the splice interval.
 Once input data and options are selected, click Splice Data. Major steps of the splicing process will
 be noted in the Log window. If the "Include Debugging Information" checkbox is checked, a far more
 detailed account of the process is provided, which can be helpful in the case of errors or unexpected outputs.
+
+
 
 
