@@ -316,12 +316,14 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, 
 
 # rename and add columns in spliced measurement data per LacCore requirements
 def _prepSplicedRowsForExport(dataframe, rows, depthColumn, offset, onSplice):
-    idIndex = PU.getColumnIndex(dataframe, 'SectionID')
-    if not idIndex: # if SectionID is missing, insert at the beginning
+    idIndex = PU.getLastColumnStartingWith(dataframe, "Sediment Depth")
+    if not idIndex: # if no columns starting with Sediment Depth were found, insert at the beginning
         idIndex = 0
+    else:
+        idIndex += 1 # insert after Sediment Depth column
     onSpliceStr = 'splice' if onSplice else 'off-splice'
     nameValuesList = [('Splice Depth', pandas.Series(rows[depthColumn] + offset)), ('Offset', offset), ('On-Splice', onSpliceStr)]
-    PU.insertColumns(rows, idIndex + 1, nameValuesList) 
+    PU.insertColumns(rows, idIndex, nameValuesList)
     
 
 class OffSpliceCore:

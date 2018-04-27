@@ -12,7 +12,7 @@ import unittest
 import numpy
 import pandas
 
-from columns import find_match
+from columns import find_match, find_all_starts_with
 
 
 # default utf-8-sig encoding ignores Byte Order Mark (BOM)
@@ -54,6 +54,26 @@ def renameColumns(dataframe, colmap):
 def getColumnIndex(dataframe, colname):
     dfname = find_match(colname, list(dataframe.columns))
     return dataframe.columns.get_loc(dfname) if dfname else None
+
+# return index of first column in dataframe starting with startstr
+# after las() is applied to both strings
+def getFirstColumnStartingWith(dataframe, startstr):
+    dfname = find_all_starts_with(startstr, list(dataframe.columns))
+    if len(dfname) > 0:
+        maxidx = min([dataframe.columns.get_loc(n) for n in dfname])
+    else:
+        return None
+    return maxidx
+
+# return index of last column in dataframe starting with startstr
+# after las() is applied to both strings
+def getLastColumnStartingWith(dataframe, startstr):
+    colnames = find_all_starts_with(startstr, list(dataframe.columns))
+    if len(colnames) > 0:
+        max_idx = max([dataframe.columns.get_loc(n) for n in colnames])
+    else:
+        return None
+    return max_idx
 
 # Insert a column into dataframe for each (column name, values) tuple in nameValuesList,
 # starting at the specified index.
@@ -156,6 +176,16 @@ class Tests(unittest.TestCase):
     def test_utf8bom_blanklines(self):
         df = readFile("../testdata/utf8_bom_blanklines.csv")
         self.assertTrue(len(df) == 4)
+
+    def test_getColumnStartingWith(self):
+        df = readFile("../testdata/GLAD9_Site1_XRF.csv")
+        lastidx = getFirstColumnStartingWith(df, "Sediment Depth")
+        self.assertTrue(lastidx == 10)
+
+    def test_getLastColumnStartingWith(self):
+        df = readFile("../testdata/GLAD9_Site1_XRF.csv")
+        lastidx = getLastColumnStartingWith(df, "Sediment Depth")
+        self.assertTrue(lastidx == 11)
         
 if __name__ == "__main__":
     log.basicConfig(level=log.DEBUG)

@@ -104,6 +104,35 @@ def find_match(colname, names):
             break
     return match
 
+# return raw (non-las'd) string of first name in names that starts with
+# startstr or None if no match is found
+def find_starts_with(startstr, names):
+    match = None
+    for name in names:
+        if las(name).startswith(las(startstr)):
+            match = name
+            break
+    return match
+
+# return raw (non-las'd) strings of all elts in names that start with startstr
+def find_all_starts_with(startstr, names):
+    matches = []
+    for name in names:
+        if las(name).startswith(las(startstr)):
+            matches.append(name)
+    return matches
+
+# return raw (non-las'd) strings of all elts in names that satisfy matchfn
+# (e.g. [str/unicode].startswith/endswith/__eq__)
+# Appealing idea but need a better grasp of str vs unicode before implementing
+# find methods in terms of this, see tests below
+def find_all_generic(searchstr, names, matchfn):
+    matches = []
+    for name in names:
+        if matchfn(las(name), las(searchstr)):
+            matches.append(name)
+    return matches
+
 # fmtcolids - list of ColumnIdentitys required by format
 # inputcols - list of column names to be mapped to format
 def map_columns(fmtcols, inputcols):
@@ -176,6 +205,19 @@ class Tests(unittest.TestCase):
         self.assertTrue(split_caps("Abe Bob") == ["Abe", "Bob"])
         self.assertTrue(split_caps("Abe    Bob") == ["Abe", "Bob"])
         self.assertTrue(split_caps("") == [""])
+
+    # unicode vs str - this works...
+    def test_find_all_generic_okay(self):
+        names = [u"foo", u"bar", u"baz"]
+        matches = find_all_generic("ba", names, unicode.startswith)
+        self.assertTrue(len(matches) == 2)
+
+    # but reversing unicode and str does not, i.e. second arg to startswith will
+    # be converted to unicode, but first will not
+    def test_find_all_generic_bad(self):
+        names = ["foo", "bar", "baz"]
+        self.assertRaises(TypeError, find_all_generic, u"ba", names, unicode.startswith)
+
         
 if __name__ == "__main__":
     unittest.main()
