@@ -1,8 +1,7 @@
 '''
-April 14 2016
-Has become a repository for all kinds of useful conversion routines that all desperately
-need to be generalized and modularized in an intelligent way, but for now we're under the
-gun trying to get Towuti its data...
+Logic and supporting f'ns to convert a section summary and sparse splice
+to an affine and splice interval table (SIT), and to export measurement
+data based on an affine and SIT.
 '''
 
 from datetime import date, datetime
@@ -24,7 +23,7 @@ from coring.manualCorrelation import ManualCorrelationTable
 from tabular.csvio import writeToCSV
 import tabular.pandasutils as PU
 
-FeldmanVersion = "1.0.0"
+FeldmanVersion = "1.0.1"
 
 OutputVocabulary = 'IODP'
 
