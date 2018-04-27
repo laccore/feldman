@@ -443,26 +443,25 @@ def appendDate(text):
     return text + "_{}".format(date.today().isoformat())
 
 
-
 class Test(unittest.TestCase):
     def test_sparse_to_sit(self):
         # TODO: replace with testdata GLAD9 or contrived files
-        sparsePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_SparseSpliceTable_20161117.csv"
-        secsummPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP Section Summary 20161117.csv"
-        affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestAffine.csv"
-        splicePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestSplice.csv"
+        sparsePath = "testdata/GLAD9_Site1_SparseSplice.csv"
+        secsummPath = "testdata/GLAD9_SectionSummary.csv"
+        affinePath = "testdata/GLAD9_Site1_TestAffine.csv"
+        splicePath = "testdata/GLAD9_Site1_TestSIT.csv"
         convertSparseSplice(secsummPath, sparsePath, affinePath, splicePath)
         affine = aff.AffineTable.createWithFile(affinePath)
         sit = si.SpliceIntervalTable.createWithFile(splicePath)
-        self.assertTrue(len(affine.getSites()) == 3)
-        self.assertTrue(len(sit.df) == 105)
+        self.assertTrue(len(affine.getSites()) == 7)
+        self.assertTrue(len(sit.df) == 58)
     
     def test_splice_measurement(self):
-        affinePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestAffine.csv"
-        splicePath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_Site1_TestSplice.csv"
-        measPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_subsamples_20161120_utf8err.csv"
-        splicedMeasPath = "/Users/bgrivna/Desktop/LacCore/TDP Towuti/TDP_subsamples_TestSpliced.csv"
-        exportMeasurementData(affinePath, splicePath, measPath, splicedMeasPath, depthColumn='Top Depth (MBLF, unscaled)') # include off-splice
+        affinePath = "testdata/GLAD9_Site1_TestAffine.csv"
+        splicePath = "testdata/GLAD9_Site1_TestSIT.csv"
+        measPath = "testdata/GLAD9_Site1_XRF.csv"
+        splicedMeasPath = "testdata/GLAD9_Site1_XRF_test-spliced.csv"
+        exportMeasurementData(affinePath, splicePath, measPath, splicedMeasPath, depthColumn='Sediment Depth, unscaled (MBS / CSF-A)') # include off-splice
 
 if __name__ == "__main__":
     log.basicConfig(level=log.INFO)
