@@ -6,7 +6,7 @@ Qt GUI elements
 @author: bgrivna
 '''
 
-import logging, os, platform
+import logging, os, platform, urlparse
 
 from PyQt5 import QtWidgets, QtCore
 
@@ -37,7 +37,36 @@ def chooseFiles(parent, path=""):
 def chooseSaveFile(parent, path=""):
     dlg = QtWidgets.QFileDialog(parent, "Save file", path)
     saveFile = dlg.getSaveFileName(parent)
-    return saveFile    
+    return saveFile
+
+
+# provide file drag and drop support
+class DragAndDropMixin:
+    def __init__(self):
+        self.acceptMethod = None
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText:
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasText:
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept()
+            url = event.mimeData().text()
+            urls = [u for u in url.split('\n') if len(u) > 0]
+            paths = [os.path.abspath(urlparse.urlparse(u).path) for u in urls]
+            if self.acceptMethod:
+                self.acceptMethod(paths)
+        else:
+            event.ignore()
+
+    # client-provided method to handle a single arugment: a list of file paths
+    def setAcceptMethod(self, method):
+        self.acceptMethod = method
+
 
 # list of files with Add and Delete buttons
 class FileListPanel(QtWidgets.QWidget):
@@ -90,13 +119,15 @@ class FileListPanel(QtWidgets.QWidget):
 # table of files and options with add and remove buttons
 # hard-coded to splice export process at present
 # generalize to OptionsTable or the like
-class FileTablePanel(QtWidgets.QWidget):
+class FileTablePanel(QtWidgets.QWidget, DragAndDropMixin):
     def __init__(self, title, depthColumnsProvider):
         QtWidgets.QWidget.__init__(self)
         self.initUI(title)
         self.mdPaths = {} # dict of MeasurementData paths keyed on basenames
         self.count = 0
         self.depthColumnsProvider = depthColumnsProvider
+        self.setAcceptDrops(True)
+        self.setAcceptMethod(self.addFiles)
 
     def initUI(self, title):
         vlayout = QtWidgets.QVBoxLayout(self)
@@ -124,7 +155,7 @@ class FileTablePanel(QtWidgets.QWidget):
         vlayout.setSpacing(0)
         vlayout.addLayout(arlayout)
         vlayout.setContentsMargins(0,0,0,0)
-        
+
     def addFile(self, filepath):
         filename = os.path.basename(filepath)
         if filename not in self.mdPaths:
@@ -209,6 +240,13 @@ class CheckboxAligner(QtWidgets.QWidget):
         return self.cb.isChecked()
         
 
+# QLineEdit with drag and drop support for files
+class DroppableLineEdit(QtWidgets.QLineEdit, DragAndDropMixin):
+    def __init__(self, parent):
+        super(DroppableLineEdit, self).__init__(parent)
+        self.setAcceptDrops(True)
+
+
 
 # single file path with label and browse button
 class SingleFilePanel(QtWidgets.QWidget):
@@ -221,7 +259,8 @@ class SingleFilePanel(QtWidgets.QWidget):
         self.fileType = fileType
         layout = QtWidgets.QHBoxLayout(self)
         layout.addWidget(LabelFactory.makeItemLabel(title + ':'))
-        self.filePath = QtWidgets.QLineEdit(self)
+        self.filePath = DroppableLineEdit(self)
+        self.filePath.setAcceptMethod(self.handleDrop)
         layout.addWidget(self.filePath)
         self.browseButton = QtWidgets.QPushButton("...", self)
         self.browseButton.clicked.connect(self.onBrowse)
@@ -233,6 +272,9 @@ class SingleFilePanel(QtWidgets.QWidget):
     
     def setPath(self, newpath):
         self.filePath.setText(newpath)
+
+    def handleDrop(self, paths):
+        self.setPath(paths[0]) # accept only the first path in the list
         
     def setPathIfExists(self, newpath):
         if os.path.exists(newpath):
