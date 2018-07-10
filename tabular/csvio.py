@@ -15,6 +15,7 @@ import columns as TC
 class FormatError(Exception):
     pass
 
+# read CSV from filepath, map columns to given format, and split SiteHole column if needed
 def createWithCSV(filepath, fmt):
     log.info("Creating {} with {}...".format(fmt.name, filepath))
     dataframe = PU.readFile(filepath, na_values=['?', '??', '???'])
@@ -44,10 +45,11 @@ def createWithCSV(filepath, fmt):
 
     return dataframe
 
+# write a DataFrame to a CSV at the given path, removing Site and Hole
+# columns if a SiteHole column is present
 def writeToCSV(dataframe, filepath):
     dataframe = dropSiteHole(dataframe)
     PU.writeToFile(dataframe, filepath)
-
 
 # split data of form [numeric][alphabetic] into separate columns
 def splitCompoundColumn(df, colname):
@@ -70,7 +72,6 @@ def dropSiteHole(df):
     if shName is not None and shName in df and 'Site' in df and 'Hole' in df: # remove added Site and Hole columns if necessary
         df = df.drop(["Site", 'Hole'], axis=1)
     return df
-
 
 # TODO: validation methods
 def canCreateWithFile(self, filepath, fmt):
