@@ -10,18 +10,18 @@ import unittest
 from tabular.csvio import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 
-Site1 = ColumnIdentity("Site1", "Site of off-splice core", [])
-Hole1 = ColumnIdentity("Hole1", "Hole of off-splice core", [])
-Core1 = ColumnIdentity("Core1", "Core of off-splice core", [])
-Tool1 = ColumnIdentity("Tool1", "Tool of off-splice core", [])
-Section1 = ColumnIdentity("Section1", "Section of off-splice core", [])
-SectionDepth1 = ColumnIdentity("SectionDepth1", "Section depth of correlation point on off-splice core", [], TabularDatatype.NUMERIC, 'cm')
-Site2 = ColumnIdentity("Site2", "Site of on-splice core", [])
-Hole2 = ColumnIdentity("Hole2", "Hole of on-splice core", [])
-Core2 = ColumnIdentity("Core2", "Core of on-splice core", [])
-Tool2 = ColumnIdentity("Tool2", "Tool of on-splice core", [])
-Section2 = ColumnIdentity("Section2", "Section of on-splice core", [])
-SectionDepth2 = ColumnIdentity("SectionDepth2", "Section depth of correlation point on on-splice core", [], TabularDatatype.NUMERIC, 'cm')
+Site1 = ColumnIdentity("Site1", desc="Site of off-splice core")
+Hole1 = ColumnIdentity("Hole1", desc="Hole of off-splice core")
+Core1 = ColumnIdentity("Core1", desc="Core of off-splice core")
+Tool1 = ColumnIdentity("Tool1", desc="Tool of off-splice core")
+Section1 = ColumnIdentity("Section1", desc="Section of off-splice core")
+SectionDepth1 = ColumnIdentity("SectionDepth1", desc="Section depth of correlation point on off-splice core", datatype=TabularDatatype.NUMERIC, unit='cm')
+Site2 = ColumnIdentity("Site2", desc="Site of on-splice core")
+Hole2 = ColumnIdentity("Hole2", desc="Hole of on-splice core")
+Core2 = ColumnIdentity("Core2", desc="Core of on-splice core")
+Tool2 = ColumnIdentity("Tool2", desc="Tool of on-splice core")
+Section2 = ColumnIdentity("Section2", desc="Section of on-splice core")
+SectionDepth2 = ColumnIdentity("SectionDepth2", desc="Section depth of correlation point on on-splice core", datatype=TabularDatatype.NUMERIC, unit='cm')
 
 ManualCorrelationCols = [Site1, Hole1, Core1, Tool1, Section1, SectionDepth1, Site2, Hole2, Core2, Tool2, Section2, SectionDepth2]
 ManualCorrelationFormat = TabularFormat("Manual Correlation Table", ManualCorrelationCols)
