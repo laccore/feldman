@@ -89,6 +89,7 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     affDF = pandas.DataFrame(arDicts, columns=aff.AffineFormat.getColumnNames())
     log.info("writing affine table to {}".format(os.path.abspath(affineOutPath)))
     log.debug("affine table column types:\n{}".format(affDF.dtypes))
+    roundValues(affDF, aff.AffineFormat)
     prettyColumns(affDF, aff.AffineFormat)
     writeToCSV(affDF, affineOutPath)
     
@@ -179,8 +180,8 @@ def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepth
             coreTop = secsumm.getCoreTop(site, hole, core) # use core's top for depths in affine table, not depth of TIE in splice
             affineShiftType = _spliceShiftToAffine(sptype, gap)
             fixedCore = prevRow['Hole'] + prevRow['Core'] if sptype == "TIE" else ""
-            fixedTieCsf = botCSFs[-1] if sptype == "TIE" else ""
-            shiftedTieCsf = shiftTop if sptype == "TIE" else ""
+            fixedTieCsf = botCSFs[-1] if sptype == "TIE" else numpy.NaN
+            shiftedTieCsf = shiftTop if sptype == "TIE" else numpy.NaN
             affineRow = aff.AffineRow(site, hole, core, row['Tool'], coreTop, coreTop + affine, affine, shiftType=affineShiftType,
                                       fixedCore=fixedCore, fixedTieCsf=fixedTieCsf, shiftedTieCsf=shiftedTieCsf, comment="splice") 
             affineRows.append(affineRow)
@@ -214,6 +215,7 @@ def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepth
     
     log.info("writing splice interval table to {}".format(os.path.abspath(sitOutPath)))
     log.debug("splice interval table column types:{}".format(sitDF.dtypes))
+    roundValues(sitDF, si.SITFormat)
     prettyColumns(sitDF, si.SITFormat)
     writeToCSV(sitDF, sitOutPath)
     
@@ -437,14 +439,21 @@ def fillAffineRows(affineRows):
 def prettyColumns(dataframe, fmt):
     colmap = {c.name: c.prettyName(OutputVocabulary) for c in fmt.cols if c.name in dataframe}
     PU.renameColumns(dataframe, colmap)
-    
+
+# Round values in numeric columns to 3 places
+def roundValues(dataframe, fmt, digits=3):
+    numCols = [c.name for c in fmt.cols if c.isNumeric() and c.name in dataframe]
+    for col in numCols:
+        try:
+            dataframe[col] = dataframe[col].round(digits)
+        except Exception as e:
+            log.warning("Couldn't round values in column {}. {}".format(col, repr(e)))
+
 def appendDate(text):
     return text + "_{}".format(date.today().isoformat())
 
-
 class Test(unittest.TestCase):
     def test_sparse_to_sit(self):
-        # TODO: replace with testdata GLAD9 or contrived files
         sparsePath = "testdata/GLAD9_Site1_SparseSplice.csv"
         secsummPath = "testdata/GLAD9_SectionSummary.csv"
         affinePath = "testdata/GLAD9_Site1_TestAffine.csv"

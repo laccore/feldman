@@ -8,6 +8,8 @@ import logging as log
 import os
 import unittest
 
+import numpy
+
 from tabular.csvio import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 from columns import namesToIds, CoreIdentityCols
@@ -60,7 +62,7 @@ class AffineTable:
             
 
 class AffineRow:
-    def __init__(self, site, hole, core, tool, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', fixedCore='', fixedTieCsf='', shiftedTieCsf='', dataUsed='', comment=''):
+    def __init__(self, site, hole, core, tool, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', fixedCore='', fixedTieCsf=numpy.NaN, shiftedTieCsf=numpy.NaN, dataUsed='', comment=''):
         self.site = site
         self.hole = hole
         self.core = core
