@@ -121,10 +121,10 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         
         self.secSummFile = gui.SingleFilePanel("Section Summary")
         self.sparseFile = gui.SingleFilePanel("Sparse Splice")
-        self.manCorrFile = gui.SingleFilePanel("Manual Correlation File")
+        self.manCorrFile = gui.SingleFilePanel("Manual Correlation")
         vlayout.addWidget(self.secSummFile)
         vlayout.addWidget(self.sparseFile)
-        vlayout.addLayout(gui.HelpTextDecorator(self.manCorrFile, "Optional user-defined correlations for off-splice cores. Used in affine table generation.", spacing=0))
+        vlayout.addLayout(gui.HelpTextDecorator(self.manCorrFile, "Optional. User-defined ties or offsets for off-splice cores override default affine shifts. See manual for details.", spacing=0))
 
         self.useScaledDepths = QtWidgets.QCheckBox("Use Scaled Depths")
         self.lazyAppend = QtWidgets.QCheckBox("Lazy Append")
