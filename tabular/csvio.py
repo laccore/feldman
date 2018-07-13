@@ -73,29 +73,27 @@ def dropSiteHole(df):
         df = df.drop(["Site", 'Hole'], axis=1)
     return df
 
-# TODO: validation methods
-def canCreateWithFile(self, filepath, fmt):
-    canCreate = False
-    # read headers
+# can the given filepath be used to create TabularFormat fmt?
+# TODO: account for splitting of SiteHole
+def canCreateWithFile(filepath, fmt):
     headers = PU.readHeaders(filepath)
-    colmap = TC.map_columns(fmt, headers)
-    # can columns be mapped to format?
-    if len(colmap) == len(fmt):
-        canCreate = True
+    colmap = TC.map_columns(fmt.cols, headers)
+    missingRequiredColumns = [c.name for c in fmt.cols if not c.optional and c.name not in colmap]
+    canCreate = len(missingRequiredColumns) == 0
     return canCreate
 
-def validData(self, filepath, fmt, colmap):
+def validData(filepath, fmt, colmap):
     valid = False
     # read full file
     df = PU.readFile(filepath)
-    colmap = TC.map_columns(fmt, list(df.columns))
+    colmap = TC.map_columns(fmt.cols, list(df.columns))
     # apply colmap
     PU.renameColumns(df, {v: k for k,v in colmap.iteritems()})
     # validate contents of columns
-    for fmtcol in fmt:
+    for fmtcol in fmt.cols:
         if fmtcol.name in df:
             pass
-    # perform format-specific validation (e.g. TopDepth >= BottomDepth for each row of a SectionSummary)
+    # TODO: perform format-specific validation (e.g. TopDepth >= BottomDepth for each row of a SectionSummary)
     return valid
 
 

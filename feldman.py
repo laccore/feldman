@@ -18,9 +18,9 @@ import coring.spliceInterval as si
 import coring.measurement as meas
 from coring.sectionSummary import SectionSummary
 from coring.sparseSplice import SparseSplice
-from coring.manualCorrelation import ManualCorrelationTable
+from coring.manualCorrelation import ManualCorrelationTable, loadManualCorrelation
 
-from tabular.csvio import writeToCSV
+from tabular.csvio import writeToCSV, FormatError
 import tabular.pandasutils as PU
 
 FeldmanVersion = "1.0.1"
@@ -78,7 +78,15 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
-    mancorr = ManualCorrelationTable.createWithFile(manualCorrelationPath) if manualCorrelationPath else None
+
+    mancorr = loadManualCorrelation(manualCorrelationPath) if manualCorrelationPath else None
+    if mancorr:
+        print mancorr.df.dtypes
+    elif manualCorrelationPath: # manual correlation was provided by user but couldn't be loaded
+        errstr = "The manual correlation file {} could not be loaded.".format(manualCorrelationPath)
+        log.error(errstr)
+        raise FormatError(errstr)
+
     offSpliceAffRows = gatherOffSpliceAffines(sit, ss, mancorr)
     
     allAff = onSpliceAffRows + offSpliceAffRows
@@ -122,12 +130,12 @@ def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepth
         top = row['TopSection']
         topOff = row['TopOffset']
         log.debug("top section = {}, top offset = {}".format(top, topOff))
-        shiftTop = getOffsetDepth(secsumm, site, hole, core, top, topOff, useScaledDepths)
+        shiftTop = secsumm.getOffsetDepth(site, hole, core, top, topOff, useScaledDepths)
         
         bot = row['BottomSection']
         botOff = row['BottomOffset']
         log.debug("bottom section = {}, bottom offset = {}".format(bot, botOff))
-        shiftBot = getOffsetDepth(secsumm, site, hole, core, bot, botOff, useScaledDepths)
+        shiftBot = secsumm.getOffsetDepth(site, hole, core, bot, botOff, useScaledDepths)
         
         # bail on inverted or zero-length intervals
         if shiftTop >= shiftBot:
@@ -149,9 +157,9 @@ def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepth
                     affine = prevAffine
                     log.debug("APPENDing {} at depth {} based on previous affine {}".format(shiftTop, shiftTop + affine, affine))
                 else: # different hole, use scaled depths to determine gap
-                    prevBotScaledDepth = getOffsetDepth(secsumm, prevRow['Site'], prevRow['Hole'], prevRow['Core'],
+                    prevBotScaledDepth = secsumm.getOffsetDepth(prevRow['Site'], prevRow['Hole'], prevRow['Core'],
                                                         prevRow['BottomSection'], prevRow['BottomOffset'], scaledDepth=True)
-                    topScaledDepth = getOffsetDepth(secsumm, site, hole, core, top, topOff, scaledDepth=True)
+                    topScaledDepth = secsumm.getOffsetDepth(site, hole, core, top, topOff, scaledDepth=True)
                     scaledGap = topScaledDepth - prevBotScaledDepth
                     if scaledGap < 0.0:
                         log.warning("Bottom of previous interval is {}m *above* top of next interval in CSF-B space".format(scaledGap))
@@ -342,6 +350,9 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
     onSpliceCores = []
     ssCores = secsumm.getCores()
     for _, row in ssCores.iterrows():
+        # brg 7/10/2018: Unsure why I did this any why I thought it would do anything.
+        # Shouldn't all rows from secsumm have their site in secsumm.getSites()???
+        # May be a vestige of the days when one site was allowed at a time.
         if row.Site not in secsumm.getSites(): # skip section summary rows from non-site cores
             skippedCoreCount += 1
             continue
@@ -358,52 +369,69 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
     # for each of the off-splice cores:
     for osc in offSpliceCores:
         oscid = ci.CoreIdentity("[Project Name]", osc.Site, osc.Hole, osc.Core, osc.Tool)
-        
-        mcc = None
+
+        # is that core manually correlated?        
+        hasManual = False
         if mancorr is not None:
-            mcc = mancorr.findByOffSpliceCore(osc.Site, osc.Hole, osc.Core)
-            if mcc is not None:
-                log.debug("Found manual correlation for {}".format(OffSpliceCore(osc)))
+            hasManual = mancorr.hasOffSpliceCore(osc.Site, osc.Hole, osc.Core)
+            if hasManual:
+                if oscid not in osAffineShifts:
+                    log.debug("Found manual correlation for {}".format(OffSpliceCore(osc)))
+                else:
+                    warnstr = "Found additional manual correlation for {}: {} (new) vs. {} (existing) - ignoring new!"
+                    log.warning(warnstr.format(oscid, mancorr.getOffset(osc.Site, osc.Hole, osc.Core), osAffineShifts[oscid]))
             else:
                 log.debug("no manual correlation for {}".format(OffSpliceCore(osc)))
             
         offSpliceMbsf = 0.0
         offset = 0.0
-        # is that core manually correlated?
-        if mcc is not None:
-            # if the on-splice "correlation core" is actually on-splice:
-            if sit.containsCore(mcc.Site2, mcc.Hole2, mcc.Core2):
-                log.debug("SIT contains on-splice core")
+        shiftType = "REL"
+        fixedCore = fixedTieCsf = shiftedTieCsf = None # used only case of TIE
 
-                # use sparse splice to SIT logic to determine affine for off-splice core based on alignment of section depths
-                offSpliceMbsf = getOffsetDepth(secsumm, mcc.Site1, mcc.Hole1, mcc.Core1, mcc.Section1, mcc.SectionDepth1) # TODO: UPDATE
-                log.debug("off-splice: {}@{} = {} MBSF".format(oscid, mcc.SectionDepth1, offSpliceMbsf))
-                onSpliceMbsf = getOffsetDepth(secsumm, mcc.Site2, mcc.Hole2, mcc.Core2, mcc.Section2, mcc.SectionDepth2)
-                log.debug("on-splice: {}{}-{}@{} = {} MBSF".format(mcc.Site2, mcc.Hole2, mcc.Core2, mcc.SectionDepth2, onSpliceMbsf))
-                sitOffset = sit.getCoreOffset(mcc.Site2, mcc.Hole2, mcc.Core2)
-                onSpliceMcd = onSpliceMbsf + sitOffset
-                offset = onSpliceMcd - offSpliceMbsf
-                log.debug("   + SIT offset of {} = {} MCD".format(sitOffset, onSpliceMcd))
-                log.debug("   off-splice MBSF {} + {} offset = {} on-splice MCD".format(offSpliceMbsf, offset, onSpliceMcd))
-                
-                # track affine for off-splice core - additional correlations for that core will be ignored if present
-                if oscid not in osAffineShifts:
+        # If so, apply the manual correlation
+        if hasManual:
+            if mancorr.includesOnSpliceCore(): # ManualCorrelationTable
+                mcc = mancorr.findByOffSpliceCore(osc.Site, osc.Hole, osc.Core)
+                if sit.containsCore(mcc.Site2, mcc.Hole2, mcc.Core2): # is correlation core actually on-splice?
+                    log.debug("SIT contains on-splice core")
+
+                    # use sparse splice to SIT logic to determine affine for off-splice core based on alignment of section depths
+                    offSpliceMbsf = secsumm.getOffsetDepth(mcc.Site1, mcc.Hole1, mcc.Core1, mcc.Section1, mcc.SectionDepth1) # TODO: UPDATE
+                    log.debug("off-splice: {}@{} = {} MBSF".format(oscid, mcc.SectionDepth1, offSpliceMbsf))
+                    onSpliceMbsf = secsumm.getOffsetDepth(mcc.Site2, mcc.Hole2, mcc.Core2, mcc.Section2, mcc.SectionDepth2)
+                    log.debug("on-splice: {}{}-{}@{} = {} MBSF".format(mcc.Site2, mcc.Hole2, mcc.Core2, mcc.SectionDepth2, onSpliceMbsf))
+                    sitOffset = sit.getCoreOffset(mcc.Site2, mcc.Hole2, mcc.Core2)
+                    onSpliceMcd = onSpliceMbsf + sitOffset
+                    offset = onSpliceMcd - offSpliceMbsf
+                    log.debug("   + SIT offset of {} = {} MCD".format(sitOffset, onSpliceMcd))
+                    log.debug("   off-splice MBSF {} + {} offset = {} on-splice MCD".format(offSpliceMbsf, offset, onSpliceMcd))
+                    
+                    # track affine for off-splice core - additional correlations for that core will be ignored if present
                     osAffineShifts[oscid] = offset
+                    shiftType = "TIE"
+                    fixedCore = "{}{}".format(mcc.Hole2, mcc.Core2)
+                    fixedTieCsf = onSpliceMbsf
+                    shiftedTieCsf = offSpliceMbsf
                 else:
-                    log.warning("Found additional offset for {}: {} (new) vs. {} (existing) - ignoring new!".format(oscid, offset, osAffineShifts[oscid]))
-            else:
-                # warn that "correlation core" is NOT on-splice and fall back on default top MBSF approach
-                log.warning("Alleged correlation core {}{}-{} is NOT on-splice".format(mcc.Site2, mcc.Hole2, mcc.Core2))
-                
+                    # warn that "correlation core" is NOT on-splice and fall back on default top MBSF approach
+                    log.warning("Alleged correlation core {}{}-{} is NOT on-splice, using default method to determine offset".format(mcc.Site2, mcc.Hole2, mcc.Core2))
+            else: # ManualOffsetTable
+                offset = mancorr.getOffset(osc.Site, osc.Hole, osc.Core)
+                osAffineShifts[oscid] = offset
+                shiftType = "SET"
+        
+        # Otherwise, use default shift method: find the on-splice core with top MBSF
+        # closest to that of the current core, and use its affine shift.
         if oscid not in osAffineShifts:
-            # find on-splice core with top MBSF closest to that of the current core and use its affine shift
             log.debug("No manual shift for {}, seeking closest top...".format(oscid))
             closestCore = secsumm.getCoreWithClosestTop(osc.Site, osc.Hole, osc.Core, onSpliceCores)
             offset = sit.getCoreOffset(closestCore.Site, closestCore.Hole, closestCore.Core)
             osAffineShifts[oscid] = offset
 
         coreTop = secsumm.getCoreTop(osc.Site, osc.Hole, osc.Core)  # use core's top for depths in affine table, not depth of TIE in splice
-        affineRow = aff.AffineRow(osc.Site, osc.Hole, osc.Core, osc.Tool, coreTop, coreTop + offset, offset, shiftType="REL", comment="off-splice")
+        affineRow = aff.AffineRow(osc.Site, osc.Hole, osc.Core, osc.Tool, coreTop, coreTop + offset, offset, shiftType=shiftType, comment="off-splice")
+        if shiftType == "TIE":
+            affineRow.setTieData(fixedCore, fixedTieCsf, shiftedTieCsf)
         affineRows.append(affineRow)
         
     return affineRows

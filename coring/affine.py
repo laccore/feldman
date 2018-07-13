@@ -91,6 +91,11 @@ class AffineRow:
                 DepthCCSF.name:self.ccsf, Offset.name:self.cumOffset, DifferentialOffset.name:self.diffOffset,
                 GrowthRate.name:self.growthRate, ShiftType.name:self.shiftType, FixedCore.name:self.fixedCore,
                 FixedTieCSF.name:self.fixedTieCsf, ShiftedTieCSF.name:self.shiftedTieCsf, 'DataUsed':self.dataUsed, 'Comment':self.comment}
+
+    def setTieData(self, fixedCore, fixedTieCsf, shiftedTieCsf):
+        self.fixedCore = fixedCore
+        self.fixedTieCsf = fixedTieCsf
+        self.shiftedTieCsf = shiftedTieCsf
         
     def __repr__(self):
         return "{}{}-{}{} CSF = {}, CCSF = {}, Offset = {}".format(self.site, self.hole, self.core, self.tool, self.csf, self.ccsf, self.cumOffset)

@@ -47,7 +47,32 @@ class SectionSummary:
     # return list of unique sites
     def getSites(self):
         sites = self.dataframe['Site']
-        return list(set(sites))    
+        return list(set(sites))
+
+    # get total depth of a section offset using SectionSummary data and curated lengths if available
+    def getOffsetDepth(self, site, hole, core, section, offset, scaledDepth=False):
+        secTop = self.getSectionTop(site, hole, core, section) if not scaledDepth else self.getScaledSectionTop(site, hole, core, section) 
+        secBot = self.getSectionBot(site, hole, core, section) if not scaledDepth else self.getScaledSectionBot(site, hole, core, section)
+        scaledTxt = "scaled " if scaledDepth else ""
+        sectionId = "{}{}-{}-{}".format(site, hole, core, section)
+        log.debug("   {}section: {}, top = {}m, bot = {}m".format(scaledTxt, sectionId, secTop, secBot))
+        log.debug("   {}section offset = {}cm + {}m = {}m".format(scaledTxt, offset, secTop, secTop + offset/100.0))
+
+        curatedLength = self.getSectionLength(site, hole, core, section)
+        if offset/100.0 > curatedLength:
+            log.warning("   section {}: offset {}cm is beyond curated length of section {}m".format(sectionId, offset, curatedLength))
+
+        depth = secTop + (offset/100.0) - (self.getTotalGapAboveSectionDepth(site, hole, core, section, offset)/100.0)
+            
+        # if using scaled depths, compress depth to drilled interval
+        drilledLength = (secBot - secTop) * 100.0 # cm
+        if scaledDepth and curatedLength > drilledLength:
+            compressionFactor = drilledLength / curatedLength
+            compressedDepth = secTop + (offset/100.0 * compressionFactor)
+            log.warning("   section {}: curated length {}cm exceeds drilled length {}cm, compressing depth {}m to {}m".format(sectionId, curatedLength, drilledLength, depth, compressedDepth))
+            depth = compressedDepth
+            
+        return depth        
     
     # return depth of top of top section, bottom of bottom section
     def getCoreRange(self, site, hole, core):
