@@ -6,7 +6,7 @@ Qt GUI elements
 @author: bgrivna
 '''
 
-import logging, os, platform, urlparse
+import logging, os, platform
 
 from PyQt5 import QtWidgets, QtCore
 
@@ -46,18 +46,16 @@ class DragAndDropMixin:
         self.acceptMethod = None
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasText:
+        if event.mimeData().hasUrls():
             event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event):
-        if event.mimeData().hasText:
+        if event.mimeData().hasUrls():
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
-            url = event.mimeData().text()
-            urls = [u for u in url.split('\n') if len(u) > 0]
-            paths = [os.path.abspath(urlparse.urlparse(u).path) for u in urls]
+            paths = [u.toLocalFile() for u in event.mimeData().urls()]
             if self.acceptMethod:
                 self.acceptMethod(paths)
         else:
