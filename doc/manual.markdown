@@ -90,7 +90,7 @@ It may optionally include:
 >		Gap: User-defined gap between current and preceding interval, in meters (m). Overrides default APPEND behavior.
 
 
-#### Affine Table
+### Affine Table
 An affine table contains one row for every core in a project. Each row
 indicates the core's affine shift distance and associated metadata.
 
@@ -168,13 +168,13 @@ A manual correlation TIE table must include the following columns:
 >		Core1: The off-splice core
 >		Tool1: The off-splice tool
 >		Section1: The off-splice section
->		SectionDepth1: Section depth of the off-splice section to be aligned with on-splice section
+>		SectionDepth1: Section depth (cm) of the off-splice section to be aligned with on-splice section
 >		Site2: The on-splice site  
 >		Hole2: The on-splice hole
 >		Core2: The on-splice core
 >		Tool2: The on-splice tool
 >		Section2: The on-splice section
->		SectionDepth2: Section depth of the on-splice section to be aligned with off-splice section
+>		SectionDepth2: Section depth (cm) of the on-splice section to be aligned with off-splice section
 
 Each off-splice core will be shifted to align the specified section depths, with affine shift type TIE.
 
