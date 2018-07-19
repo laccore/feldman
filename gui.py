@@ -333,19 +333,21 @@ def HelpTextDecorator(widget, helpText, spacing=5):
 
 # create appropriately-sized labels for the current OS
 class LabelFactory:
-    # main label for an item, standard font size
+    # main label for an item
+    # On Mac, use standard font. On Windows, bold font.
     @classmethod
     def makeItemLabel(cls, text):
         label = QtWidgets.QLabel(text)
         if platform.system() == "Windows":
-            label.setStyleSheet("QLabel {font-size: 11pt;}")
+            label.setStyleSheet("QLabel {font-weight: bold;}")
         return label
     
-    # label with smaller font intended to be used for help text
+    # label for help/description text
+    # On Mac, use a smaller font. On Windows, standard font.
     @classmethod
     def makeDescLabel(cls, text):
         label = QtWidgets.QLabel(text)
-        ss = "QLabel {font-size: 9pt;}" if platform.system() == "Windows" else "QLabel {font-size: 11pt;}" 
-        label.setStyleSheet(ss)
+        if platform.system() == "Darwin":
+            label.setStyleSheet("QLabel {font-size: 11pt;}")
         return label
     
