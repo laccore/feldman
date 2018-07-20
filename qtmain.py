@@ -147,6 +147,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
     def installPrefs(self):
         self.secSummFile.setPathIfExists(self.parent.prefs.get("lastSectionSummaryPath"))
         self.sparseFile.setPathIfExists(self.parent.prefs.get("lastSparseSplicePath"))
+        self.manCorrFile.setPathIfExists(self.parent.prefs.get("lastManualCorrelationPath"))
         geom = self.parent.prefs.get("convertSparseWindowGeometry", None)
         if geom is not None:
             self.setGeometry(geom)
@@ -154,6 +155,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
     def savePrefs(self):
         self.parent.prefs.set("lastSectionSummaryPath", self.secSummFile.getPath())
         self.parent.prefs.set("lastSparseSplicePath", self.sparseFile.getPath())
+        self.parent.prefs.set("lastManualCorrelationPath", self.manCorrFile.getPath())
         self.parent.prefs.set("convertSparseWindowGeometry", self.geometry())
         
     def convert(self):
