@@ -23,7 +23,7 @@ from coring.manualCorrelation import ManualCorrelationTable, loadManualCorrelati
 from tabular.csvio import writeToCSV, FormatError
 import tabular.pandasutils as PU
 
-FeldmanVersion = "1.0.1"
+FeldmanVersion = "1.0.2"
 
 OutputVocabulary = 'IODP'
 
