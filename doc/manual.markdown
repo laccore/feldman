@@ -1,7 +1,7 @@
 Feldman User's Guide
 --------------------
-*July 19, 2018*
-*version 1.0.2*
+*August 9, 2018*
+*version 1.0.3*
 
 ## Introduction
 
