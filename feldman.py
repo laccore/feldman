@@ -62,6 +62,18 @@ def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False
         
     return depth
 
+# Check a Section column's values: return True if all values are
+# are either integers or the string 'CC', otherwise False
+def validSectionColumn(df, colname):
+    try:
+        for val in df[colname]:
+            # this works for strings e.g. int("124") = 124 and ints e.g. int(124) == 124
+            # but throws a ValueError for non-integer strings and non-integers
+            if val != 'CC':
+                int(val)
+    except ValueError:
+        return False
+    return True
 
 # options: LazyAppend, UseScaledDepths, Manual Correlation File 
 def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False, manualCorrelationPath=None):
@@ -73,6 +85,13 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     
     ss = SectionSummary.createWithFile(secSummPath)
     sp = SparseSplice.createWithFile(sparsePath)
+
+    # validate that all Section columns contain only integers and 'CC'
+    for secCol in ['TopSection', 'BottomSection']:
+        if not validSectionColumn(sp.dataframe, secCol):
+            raise FormatError("{} column in Sparse Splice contains one or more non-integer values.".format(secCol))
+    if not validSectionColumn(ss.dataframe, 'Section'):
+        raise FormatError("Section column in Section Summary contains one or more non-integer values.")
 
     onSpliceAffRows = sparseSpliceToSIT(sp, ss, sitOutPath, useScaledDepths, lazyAppend)
     
