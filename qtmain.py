@@ -22,9 +22,9 @@ def validatePath(path, filetype):
     if not os.path.exists(path):
         raise InvalidPathError("{} file '{}' does not exist".format(filetype, path))
     
-def getFloatCols(filepath):
+def getNumericCols(filepath):
     df = PU.readFileMinimal(filepath)
-    cols = [c for c in df.columns if df[c].dtype == 'float64']
+    cols = [c for c in df.columns if df[c].dtype == 'float64' or df[c].dtype == 'int64']
     return cols
 
 class MainWindow(QtWidgets.QWidget):
@@ -229,7 +229,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
         vlayout.addLayout(gui.HelpTextDecorator(self.affineFile, "Affine shifts to apply to data. Should correspond to applied splice.", spacing=0))
         vlayout.addLayout(gui.HelpTextDecorator(self.sitFile, "Splice to apply to data.", spacing=0))
         
-        self.mdList = gui.FileTablePanel("Measurement Data to be Spliced", getFloatCols)
+        self.mdList = gui.FileTablePanel("Measurement Data to be Spliced", getNumericCols)
         vlayout.addWidget(self.mdList)
         
         self.logText = gui.LogTextArea(self.parent, "Log")
