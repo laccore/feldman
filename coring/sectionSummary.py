@@ -161,25 +161,24 @@ class SectionSummary:
         if cores.empty:
             log.warn("SectionSummary: Could not find core {}-{}{}".format(site, hole, core))
         return cores
-        
 
     def _findSection(self, site, hole, core, section):
         df = self.dataframe
-        section = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.Section == section)]
-        if section.empty:
+        sectionRow = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.Section == section)]
+        if sectionRow.empty:
             log.warn("SectionSummary: Could not find {}-{}{}-{}".format(site, hole, core, section))
-        return section
+        return sectionRow
     
     def _findSectionAtDepth(self, site, hole, core, depth):
         df = self.dataframe
-        section = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (depth >= df.TopDepth) & (depth <= df.BottomDepth)]
-        if not section.empty:
-            return section.iloc[0]['Section']
+        sectionRow = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (depth >= df.TopDepth) & (depth <= df.BottomDepth)]
+        if not sectionRow.empty:
+            return sectionRow.iloc[0]['Section']
         return None
     
     def _getSectionValue(self, site, hole, core, section, columnName):
-        section = self._findSection(site, hole, core, section)
-        return section.iloc[0][columnName]
+        sectionRow = self._findSection(site, hole, core, section)
+        return sectionRow.iloc[0][columnName]
 
         
 # utility to convert Laccore DB gaps format to SectionSummary format    
