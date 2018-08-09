@@ -12,6 +12,7 @@ import feldman
 import gui
 import prefs
 import tabular.pandasutils as PU
+from tabular.csvio import FormatError
 import tracker
 
 class InvalidPathError(Exception):
@@ -193,7 +194,10 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
             self.logText.logText.clear()
             feldman.convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths, lazyAppend, manCorrPath)
         except KeyError as err:
-            gui.warnbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
+            gui.errbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
+            logging.error(traceback.format_exc())
+        except FormatError as err:
+            gui.errbox(self, "Process failed", "{}".format(err))
             logging.error(traceback.format_exc())
         except:
             err = sys.exc_info()

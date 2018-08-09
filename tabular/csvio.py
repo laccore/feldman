@@ -30,7 +30,7 @@ def createWithCSV(filepath, fmt):
         # if required columns are missing, bail out
         missingReq = [c.name for c in fmt.cols if not c.optional and c.name not in colmap]
         if len(missingReq) > 0:
-            raise FormatError("Format {} requires missing columns {}".format(fmt.name, missingReq))
+            raise FormatError("The {} format requires the following column(s): {}".format(fmt.name, ','.join(missingReq)))
         
         # if optional columns are missing, add them and fill with column default value 
         missingOpt = [c for c in fmt.cols if c.optional and c.name not in colmap]
