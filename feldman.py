@@ -213,7 +213,7 @@ def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepth
             log.warning("{}: interval top {} at or below interval bottom {} in MBLF".format(coreid, shiftTop, shiftBot))
         
         # track splice type and (optional) gap, used to determine the next interval's depths
-        sptype = row['SpliceType']
+        sptype = str.upper(row['SpliceType'])
         gap = row['Gap'] if not numpy.isnan(row['Gap']) else None
     
     # done parsing, create final dataframe for export
