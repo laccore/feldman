@@ -74,7 +74,7 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     ss = SectionSummary.createWithFile(secSummPath)
     sp = SparseSplice.createWithFile(sparsePath)
 
-    onSpliceAffRows = sparseSpliceToSIT(sp, ss, affineOutPath, sitOutPath, useScaledDepths, lazyAppend)
+    onSpliceAffRows = sparseSpliceToSIT(sp, ss, sitOutPath, useScaledDepths, lazyAppend)
     
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
@@ -104,11 +104,15 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     log.info("Conversion complete.")
 
 
-# options:
-# - lazyAppend - use previous core's affine shift even if it's from a different hole
-# - useScaledDepths - convert section depths to total depth using ScaledTopDepth and ScaledBottomDepth
-#   in SectionSummary instead of (unscaled) TopDepth and BottomDepth     
-def sparseSpliceToSIT(sparse, secsumm, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False):
+# Generates an affine table and SIT from provided SectionSummary and SparseSplice.
+# parameters:
+# - sparse: input SparseSplice
+# - secsumm: input SectionSummary
+# - sitOutPath: path to which generated SIT will be written
+# - useScaledDepths: convert section depths to total depth using ScaledTopDepth and ScaledBottomDepth
+#   in SectionSummary instead of (unscaled) TopDepth and BottomDepth
+# - lazyAppend: use previous core's affine shift even if it's from a different hole
+def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAppend=False):
     seenCores = [] # list of cores that have already been added to affine
     affineRows = [] # list of dicts, each representing a generated affine table row
     
