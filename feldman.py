@@ -73,6 +73,8 @@ def validSectionColumn(df, colname):
                 int(val)
     except ValueError:
         return False
+    except:
+        return False
     return True
 
 # options: LazyAppend, UseScaledDepths, Manual Correlation File 
