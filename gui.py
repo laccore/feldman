@@ -291,7 +291,34 @@ class SingleFilePanel(QtWidgets.QWidget):
             f = chooseDirectory(self, self.getPath())
             if f != "":
                 self.filePath.setText(f)
-                
+
+
+class ProgressPanel(QtWidgets.QWidget):
+    def __init__(self, parent):
+        QtWidgets.QWidget.__init__(self)
+        self.parent = parent
+        layout = QtWidgets.QVBoxLayout(self)
+        self.label = QtWidgets.QLabel("[progress text]")
+        self.progress = QtWidgets.QProgressBar()
+        self.progress.setMaximum(100)
+        layout.addWidget(self.label)
+        layout.addWidget(self.progress)
+
+    def setValue(self, val):
+        self.progress.setValue(val)
+
+    def setText(self, text):
+        self.label.setText(text)
+
+    def setValueAndText(self, val, text):
+        self.setValue(val)
+        self.setText(text)
+        self.parent.app.processEvents()
+
+    def clear(self):
+        self.setValue(0)
+        self.setText("")
+
 
 # Handler to direct python logging output to QTextEdit control
 class LogTextArea(logging.Handler):
@@ -321,6 +348,15 @@ class LogTextArea(logging.Handler):
 
     def write(self, m):
         pass
+
+
+class TwoButtonPanel(QtWidgets.QWidget):
+    def __init__(self, button1, button2):
+        QtWidgets.QWidget.__init__(self)
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(button1)
+        layout.addWidget(button2)
+
     
 # add help text below widget
 def HelpTextDecorator(widget, helpText, spacing=5):

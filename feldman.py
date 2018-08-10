@@ -26,6 +26,17 @@ import tabular.pandasutils as PU
 FeldmanVersion = "1.0.3"
 
 OutputVocabulary = 'IODP'
+ProgressListener = None
+
+def setProgressListener(pl):
+    global ProgressListener
+    ProgressListener = pl
+    ProgressListener.clear()
+
+def reportProgress(value, text):
+    global ProgressListener
+    if ProgressListener:
+        ProgressListener.setValueAndText(value, text)
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
 def openCorrelatorFunkyFormatFile(filename):
@@ -115,6 +126,7 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     
     arDicts = [ar.asDict() for ar in allAff]
     
+    reportProgress(100, "Writing affine and SIT to file...")
     affDF = pandas.DataFrame(arDicts, columns=aff.AffineFormat.getColumnNames())
     log.info("writing affine table to {}".format(os.path.abspath(affineOutPath)))
     log.debug("affine table column types:\n{}".format(affDF.dtypes))
@@ -146,8 +158,11 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
     prevRow = {} # previous interval's row, data needed for inter-hole default APPEND gap method
     sptype = None
     gap = None
+    rowsToProcess = len(sparse.dataframe)
 
     for index, row in sparse.dataframe.iterrows():
+        reportProgress(float(index) / rowsToProcess * 50, "Processing sparse splice interval {}...".format(index + 1))
+
         log.debug("Interval {}".format(index + 1))
         site = row['Site']
         hole = row['Hole']
@@ -277,6 +292,8 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, 
     log.info("Splicing {}".format(mdPath))
     log.info("Using '{}' as depth column".format(depthColumn))
     log.info("Options: includeOffSplice = {}, wholeSpliceSection = {}".format(includeOffSplice, wholeSpliceSection))
+
+    reportProgress(0, "Splicing {}...".format(os.path.basename(mdPath)))
     
     affine = aff.AffineTable.createWithFile(affinePath)
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
@@ -286,6 +303,8 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, 
 
     onSpliceRows = []
     for index, sirow in enumerate(sit.getIntervals()):
+        progressAmount = 50 if includeOffSplice else 100
+        reportProgress(progressAmount * float(index)/len(sit.df), "Gathering data for interval {}...".format(index + 1))
         log.debug("Interval {}: {}".format(index, sirow))
         
         sections = [sirow.topSection]
@@ -310,7 +329,7 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, 
     onSpliceDF = pandas.concat(onSpliceRows)
     log.info("Total spliced rows: {}".format(len(onSpliceDF)))
 
-    if includeOffSplice:    
+    if includeOffSplice:
         offSpliceDF = md.df[~(md.df.index.isin(onSpliceDF.index))] # off-splice rows
         totalOffSplice = len(offSpliceDF)
         log.info("Total off-splice rows: {}".format(totalOffSplice))
@@ -322,7 +341,8 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, 
         # over all rows in offSpliceRows and finding/setting the affine of each?
         offSpliceRows = []
         totalOffSpliceWritten = 0
-        for ar in affine.allRows():
+        for index, ar in enumerate(affine.allRows()):
+            reportProgress(50 + 50 * float(index) / len(affine.dataframe), "Gathering data for off-splice rows...")
             shiftedRows = offSpliceDF[(offSpliceDF.Site == ar.site) & (offSpliceDF.Hole == ar.hole) & (offSpliceDF.Core == ar.core)]
             log.debug("   found {} off-splice rows for affine row {}".format(len(shiftedRows.index), ar))
             
@@ -392,7 +412,9 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
     affineRows = []
     
     # for each of the off-splice cores:
-    for osc in offSpliceCores:
+    for index, osc in enumerate(offSpliceCores):
+        reportProgress(50 + 50 * float(index)/len(offSpliceCores), "Determining affine shifts for off-splice core {}...".format(OffSpliceCore(osc)))
+
         oscid = ci.CoreIdentity("[Project Name]", osc.Site, osc.Hole, osc.Core, osc.Tool)
 
         # is that core manually correlated?        

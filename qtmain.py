@@ -133,18 +133,31 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         vlayout.addLayout(gui.HelpTextDecorator(self.lazyAppend, "Always use previous core's affine shift for the current APPEND core operation."))
         
         self.logText = gui.LogTextArea(self.parent, "Log")
-        vlayout.addLayout(self.logText.layout)
-        
+        vlayout.addLayout(self.logText.layout, stretch=1)
+
         self.convertButton = QtWidgets.QPushButton("Convert")
         self.convertButton.clicked.connect(self.convert)
         self.closeButton = QtWidgets.QPushButton("Close")
         self.closeButton.clicked.connect(self.close)
+        buttonPanel = gui.TwoButtonPanel(self.convertButton, self.closeButton)
+
+        self.progressPanel = gui.ProgressPanel(self.parent)
+        self.progressPanel.setValueAndText(50, "Howdy")
+
+        self.stackedLayout = QtWidgets.QStackedLayout()        
+        self.stackedLayout.addWidget(buttonPanel)
+        self.stackedLayout.addWidget(self.progressPanel)
+        self.stackedLayout.setCurrentIndex(0)
+
+        #vlayout.setSpacing(0) # reduce space between bottom of log area and stackedLayout
+        vlayout.addLayout(self.stackedLayout)
+
+        # if called before self.stackedLayout is added to vlayout, default-ness is lost, unsure why
         self.closeButton.setDefault(True)
-        hlayout = QtWidgets.QHBoxLayout()
-        hlayout.addWidget(self.convertButton)
-        hlayout.addWidget(self.closeButton)
-        vlayout.addLayout(hlayout)
-        
+
+    def showProgressLayout(self, show):
+        self.stackedLayout.setCurrentIndex(1 if show else 0)
+
     def installPrefs(self):
         self.secSummFile.setPathIfExists(self.parent.prefs.get("lastSectionSummaryPath"))
         self.sparseFile.setPathIfExists(self.parent.prefs.get("lastSparseSplicePath"))
@@ -188,10 +201,12 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         self.convertButton.setEnabled(False)
         
         try:
+            self.showProgressLayout(True)
             logging.getLogger().addHandler(self.logText)
             self.logText.setLevel(logging.DEBUG if self.logText.isVerbose() else logging.INFO)
             self.logText.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
             self.logText.logText.clear()
+            feldman.setProgressListener(self.progressPanel)
             feldman.convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths, lazyAppend, manCorrPath)
         except KeyError as err:
             gui.errbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
@@ -204,6 +219,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
             gui.warnbox(self, "Process failed", "{}".format("Unhandled error {}: {}".format(err[0], err[1])))
             logging.error(traceback.format_exc())
         finally:
+            self.showProgressLayout(False)
             logging.getLogger().removeHandler(self.logText)
             self.closeButton.setEnabled(True)
             self.convertButton.setText("Convert")
@@ -237,17 +253,29 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
         vlayout.addWidget(self.mdList)
         
         self.logText = gui.LogTextArea(self.parent, "Log")
-        vlayout.addLayout(self.logText.layout)
+        vlayout.addLayout(self.logText.layout, stretch=1)
 
         self.spliceButton = QtWidgets.QPushButton("Splice Data")
         self.spliceButton.clicked.connect(self.splice)
         self.closeButton = QtWidgets.QPushButton("Close")
         self.closeButton.clicked.connect(self.close)
+
+        buttonPanel = gui.TwoButtonPanel(self.spliceButton, self.closeButton)
+
+        self.progressPanel = gui.ProgressPanel(self.parent)
+        self.progressPanel.setValueAndText(50, "Howdy")
+
+        self.stackedLayout = QtWidgets.QStackedLayout()        
+        self.stackedLayout.addWidget(buttonPanel)
+        self.stackedLayout.addWidget(self.progressPanel)
+        self.stackedLayout.setCurrentIndex(0)
+        vlayout.addLayout(self.stackedLayout)
+
+        # if called before self.stackedLayout is added to vlayout, default-ness is lost, unsure why
         self.closeButton.setDefault(True)
-        hlayout = QtWidgets.QHBoxLayout()
-        hlayout.addWidget(self.spliceButton)
-        hlayout.addWidget(self.closeButton)
-        vlayout.addLayout(hlayout)
+
+    def showProgressLayout(self, show):
+        self.stackedLayout.setCurrentIndex(1 if show else 0)        
         
     def splice(self):
         if len(self.mdList.getFiles()) == 0:
@@ -274,6 +302,8 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
         
         # splice measurement data
         try:
+            self.showProgressLayout(True)
+            feldman.setProgressListener(self.progressPanel)
             logging.getLogger().addHandler(self.logText)
             self.logText.setLevel(logging.DEBUG if self.logText.isVerbose() else logging.INFO)
             self.logText.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
@@ -289,6 +319,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             gui.warnbox(self, "Process failed", "{}".format("Unhandled error {}: {}".format(err[0], err[1])))
             logging.error(traceback.format_exc())
         finally:
+            self.showProgressLayout(False)
             logging.getLogger().removeHandler(self.logText)
             self.closeButton.setEnabled(True)
             self.spliceButton.setText("Splice Data")
