@@ -41,7 +41,7 @@ class MainWindow(QtWidgets.QWidget):
         self.pingTracker()
         self.updateCheck()
 
-    def updateCheck(self):
+    def updateCheck(self, silent=False):
         try:
             latestVersion, url = updateCheck.getLatestGithubRelease()
             if updateCheck.cmpVersions(latestVersion, feldman.FeldmanVersion) == 1:
@@ -49,8 +49,11 @@ class MainWindow(QtWidgets.QWidget):
                 result = gui.promptbox(self, title="Update Available", message=msg)
                 if result:
                     webbrowser.open(url)
-        except Exception as e:
-            pass
+        except Exception as err:
+            errmsg = "Version update check failed: {}".format(err)
+            print(errmsg)
+            if not silent:
+                gui.errbox(self, "Update Check Error", errmsg)
             
     def updateVocabulary(self, text):
         vocabkey = [k for k,v in self.outputVocabDict.items() if v == text][0]
@@ -197,7 +200,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
                 manCorrPath = self.manCorrFile.getPath()
                 
         except InvalidPathError as err:
-            gui.warnbox(self, "Invalid Path", err.message)
+            gui.warnbox(self, "Invalid Path", str(err))
             return
         
         useScaledDepths = self.useScaledDepths.isChecked()
@@ -304,7 +307,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             spliceParams = self.mdList.getFiles()
             
         except InvalidPathError as err:
-            gui.warnbox(self, "Invalid Path", err.message)
+            gui.warnbox(self, "Invalid Path", str(err))
             return
         
         self.closeButton.setEnabled(False) # prevent close of dialog
