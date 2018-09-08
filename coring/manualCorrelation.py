@@ -13,7 +13,7 @@ import unittest
 
 from tabular.csvio import createWithCSV, canCreateWithFile
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
-from columns import namesToIds
+from .columns import namesToIds
 
 Site1 = ColumnIdentity("Site1", desc="Site of off-splice core")
 Hole1 = ColumnIdentity("Hole1", desc="Hole of off-splice core")

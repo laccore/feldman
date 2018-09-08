@@ -85,7 +85,7 @@ def parseIdentity(idstr):
             if halfToken == 'A' or halfToken == 'W' or halfToken == 'WR':
                 half = halfToken
             else:
-                print "Invalid half {}, expected A, W or WR".format(halfToken)
+                print("Invalid half {}, expected A, W or WR".format(halfToken))
         
         charNumPattern = "([0-9]+)([A-Z]+)"
         sh_items = re.match(charNumPattern, sh)

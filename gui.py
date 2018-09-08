@@ -19,6 +19,10 @@ def errbox(parent, title="Error", message=""):
 def infobox(parent, title="Information", message=""):    
     QtWidgets.QMessageBox.information(parent, title, message)
 
+def promptbox(parent, title="Prompt", message=""):
+    response = QtWidgets.QMessageBox.question(parent, title, message)
+    return response == QtWidgets.QMessageBox.Yes
+
 def chooseDirectory(parent, path=""):
     dlg = QtWidgets.QFileDialog(parent, "Choose directory", path)
     selectedDir = dlg.getExistingDirectory(parent)

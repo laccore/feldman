@@ -12,7 +12,7 @@ import unittest
 from tabular.csvio import createWithCSV, FormatError
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
 import tabular.pandasutils as PU
-from columns import SectionIdentityCols
+from .columns import SectionIdentityCols
 
 # format-specific columns
 TopDepth = ColumnIdentity("TopDepth", ["TopDepthUnscaled", "Top Depth CSF-A"], desc="Top drilled depth of a core (CSF-A)", datatype=TabularDatatype.NUMERIC, unit='m')

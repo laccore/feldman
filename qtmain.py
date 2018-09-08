@@ -4,7 +4,8 @@ Created on Jul 30, 2017
 @author: bgrivna
 '''
 
-import os, sys, user, logging, traceback
+import os, sys, logging, traceback
+from pathlib import Path
 
 from PyQt5 import QtWidgets, QtCore
 
@@ -67,7 +68,7 @@ class MainWindow(QtWidgets.QWidget):
         vlayout.layout()
         
     def initPrefs(self):
-        prefDir = os.path.join(user.home, ".feldman")
+        prefDir = os.path.join(Path.home(), ".feldman")
         if not os.path.exists(prefDir):
             os.mkdir(prefDir)
         prefPath = os.path.join(prefDir, "prefs.pk")
@@ -82,7 +83,7 @@ class MainWindow(QtWidgets.QWidget):
         self.orgCombo.setCurrentText(self.outputVocabDict[vocab])
 
     def pingTracker(self):
-        uuidPath = os.path.join(user.home, ".feldman", "uuid.p") # .feldman dir created in initPrefs()
+        uuidPath = os.path.join(Path.home(), ".feldman", "uuid.p") # .feldman dir created in initPrefs()
         gatracker = tracker.Tracker(uuidPath, ["UA", "116679909", "1"])
         gatracker.ping()
     

@@ -9,7 +9,7 @@ import unittest
 
 from tabular.csvio import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
-from columns import namesToIds, CoreIdentityCols
+from .columns import namesToIds, CoreIdentityCols
 
 
 TopDepthCSF = ColumnIdentity("TopDepthCSF", ["Top Depth CSF-A"], orgNames={'IODP':"Top Depth CSF-A"}, desc="Depth of splice interval top", datatype=TabularDatatype.NUMERIC, unit='m')
@@ -81,7 +81,7 @@ class SpliceIntervalTable:
         if corerow is None or len(corerow) == 0:
             return False
         if len(corerow) > 1:
-            print "SIT {} contains more than one matching core".format(core)
+            print("SIT {} contains more than one matching core".format(core))
         return True
     
     def getCore(self, site, hole, core):
@@ -90,7 +90,7 @@ class SpliceIntervalTable:
         if len(result) == 0:
             return None
         elif len(result) > 1:
-            print "WARNING: {} matches found for {}{}-{}".format(len(result), site, hole, core)
+            print("WARNING: {} matches found for {}{}-{}".format(len(result), site, hole, core))
         return result
     
     def getCoreRow(self, site, hole, core):

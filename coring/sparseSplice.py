@@ -11,7 +11,7 @@ import unittest
 
 from tabular.csvio import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
-from columns import namesToIds, CoreIdentityCols
+from .columns import namesToIds, CoreIdentityCols
 
 Gap = ColumnIdentity("Gap", desc="Space added before an APPEND of the next interval", datatype=TabularDatatype.NUMERIC, unit='m', optional=True)
 SpliceType = ColumnIdentity("SpliceType", desc="Type of splice operation: TIE or APPEND")

@@ -27,7 +27,7 @@ class Tracker():
     def get_uuid(self):
         user_uuid = None
         if os.path.exists(self.uuid_path):
-            with open(self.uuid_path, 'r') as uuidFileStream:
+            with open(self.uuid_path, 'rb') as uuidFileStream:
                 user_uuid = pickle.load(uuidFileStream)
         else:
             user_uuid = self.create_uuid()

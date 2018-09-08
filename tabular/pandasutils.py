@@ -12,7 +12,7 @@ import unittest
 import numpy
 import pandas
 
-from columns import find_match, find_all_starts_with
+from .columns import find_match, find_all_starts_with
 
 
 # default utf-8-sig encoding ignores Byte Order Mark (BOM)
@@ -24,7 +24,7 @@ def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=Tr
             dataframe = pandas.read_csv(srcfile, nrows=nrows, sep=sep, skipinitialspace=skipinitialspace,
                                         na_values=na_values, engine=engine, encoding=encoding)
             success = True
-        except UnicodeDecodeError, msg:
+        except UnicodeDecodeError as msg:
             log.warn("Couldn't decode file in {} encoding: {}".format(encoding, msg))
     
     if not success:

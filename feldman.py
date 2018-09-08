@@ -113,7 +113,7 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
 
     mancorr = loadManualCorrelation(manualCorrelationPath) if manualCorrelationPath else None
     if mancorr:
-        print mancorr.df.dtypes
+        print(mancorr.df.dtypes)
     elif manualCorrelationPath: # manual correlation was provided by user but couldn't be loaded
         errstr = "The manual correlation file {} could not be loaded.".format(manualCorrelationPath)
         log.error(errstr)

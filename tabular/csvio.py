@@ -9,8 +9,8 @@ import unittest
 
 import pandas
 
-import pandasutils as PU
-import columns as TC
+from . import pandasutils as PU
+from . import columns as TC
 
 class FormatError(Exception):
     pass
@@ -38,9 +38,9 @@ def createWithCSV(filepath, fmt):
             PU.appendColumn(dataframe, cid.name, cid.getDefaultValue())
             colmap[cid.name] = cid.name
     
-    reverseColmap = {v: k for k,v in colmap.iteritems()}
+    reverseColmap = {v: k for k,v in colmap.items()}
     PU.renameColumns(dataframe, reverseColmap) # use format column names
-    log.info("Column map: {}".format(["{} -> {}".format(k,v) for k,v in reverseColmap.iteritems()]))
+    log.info("Column map: {}".format(["{} -> {}".format(k,v) for k,v in reverseColmap.items()]))
     PU.forceStringDatatype(dataframe, [col.name for col in fmt.cols if col.isString()])
 
     return dataframe
@@ -88,7 +88,7 @@ def validData(filepath, fmt, colmap):
     df = PU.readFile(filepath)
     colmap = TC.map_columns(fmt.cols, list(df.columns))
     # apply colmap
-    PU.renameColumns(df, {v: k for k,v in colmap.iteritems()})
+    PU.renameColumns(df, {v: k for k,v in colmap.items()})
     # validate contents of columns
     for fmtcol in fmt.cols:
         if fmtcol.name in df:

@@ -12,7 +12,7 @@ import numpy
 
 from tabular.csvio import createWithCSV
 from tabular.columns import TabularDatatype, TabularFormat, ColumnIdentity
-from columns import namesToIds, CoreIdentityCols
+from .columns import namesToIds, CoreIdentityCols
 
 
 DepthCSF = ColumnIdentity("DepthCSF", ["Depth CSF-A", "Depth MBSF", "Depth MBLF"], orgNames={'IODP':'Depth CSF-A'}, desc="Depth below sea floor", datatype=TabularDatatype.NUMERIC, unit='m')
