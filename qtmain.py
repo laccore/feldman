@@ -4,7 +4,7 @@ Created on Jul 30, 2017
 @author: bgrivna
 '''
 
-import os, sys, logging, traceback
+import os, sys, logging, traceback, webbrowser
 from pathlib import Path
 
 from PyQt5 import QtWidgets, QtCore
@@ -39,13 +39,16 @@ class MainWindow(QtWidgets.QWidget):
         self.initGUI()
         self.initPrefs()
         self.pingTracker()
+        self.updateCheck()
 
     def updateCheck(self):
         try:
             latestVersion, url = updateCheck.getLatestGithubRelease()
             if updateCheck.cmpVersions(latestVersion, feldman.FeldmanVersion) == 1:
-                pass
-                # prompt to download
+                msg = "A new version of Feldman ({}) is available. Open download page in default browser?".format(latestVersion)
+                result = gui.promptbox(self, title="Update Available", message=msg)
+                if result:
+                    webbrowser.open(url)
         except Exception as e:
             pass
             
@@ -110,9 +113,6 @@ class MainWindow(QtWidgets.QWidget):
         dlg = SpliceMeasurementDataDialog(self)
         dlg.exec_()# == QtWidgets.QDialog.Accepted
                 
-    def warnbox(self, title, message):
-        gui.warnbox(self, title, message)
-        
     # override QWidget.closeEvent()
     def closeEvent(self, event):
         self.savePrefs()
