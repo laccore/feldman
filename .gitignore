@@ -8,3 +8,5 @@
 # ignored directories
 build/
 dist/
+dist_*/
+virtenv_feldman/
