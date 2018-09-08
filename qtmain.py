@@ -15,6 +15,7 @@ import prefs
 import tabular.pandasutils as PU
 from tabular.csvio import FormatError
 import tracker
+import updateCheck
 
 class InvalidPathError(Exception):
     pass
@@ -38,6 +39,15 @@ class MainWindow(QtWidgets.QWidget):
         self.initGUI()
         self.initPrefs()
         self.pingTracker()
+
+    def updateCheck(self):
+        try:
+            latestVersion, url = updateCheck.getLatestGithubRelease()
+            if updateCheck.cmpVersions(latestVersion, feldman.FeldmanVersion) == 1:
+                pass
+                # prompt to download
+        except Exception as e:
+            pass
             
     def updateVocabulary(self, text):
         vocabkey = [k for k,v in self.outputVocabDict.items() if v == text][0]
