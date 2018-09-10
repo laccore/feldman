@@ -1,7 +1,7 @@
 Feldman User's Guide
 --------------------
-*August 9, 2018*
-*version 1.0.3*
+*September 10, 2018*
+*version 1.0.4*
 
 ## Introduction
 
@@ -88,6 +88,8 @@ It may optionally include:
 >		Data Used: Data type used to define this interval
 >		Comment: User remarks
 >		Gap: User-defined gap between current and preceding interval, in meters (m). Overrides default APPEND behavior.
+>		For instance, a Gap of 0.5 would result in a half-meter gap between the base of the preceding interval and
+>		the top of the current interval. A Gap of 0 would result in no gap, the intervals would abut.
 
 
 ### Affine Table

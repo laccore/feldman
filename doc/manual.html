@@ -1,5 +1,5 @@
 <h2 id="feldman-users-guide">Feldman User's Guide</h2>
-<p><em>August 9, 2018</em> <em>version 1.0.3</em></p>
+<p><em>September 10, 2018</em> <em>version 1.0.4</em></p>
 <h2 id="introduction">Introduction</h2>
 <p>Feldman is a software utility developed by <a href="https://csdco.umn.edu">LacCore/CSDCO</a> to aid in the process of aligning and splicing core sections from multiple holes, and exporting measurement data based on a splice. It runs on Macs (OSX, macOS) and Windows.</p>
 <p>Feldman evolved from a handful of conversion scripts written in <a href="https://python.org">Python</a>, and owes much of its functionality to the wonderful <a href="https://pandas.pydata.org">pandas</a> data analysis library. Feldman source code is available on <a href="https://github.com/laccore/feldman">GitHub</a>.</p>
@@ -59,7 +59,9 @@
 <blockquote>
 <pre><code>  Data Used: Data type used to define this interval
   Comment: User remarks
-  Gap: User-defined gap between current and preceding interval, in meters (m). Overrides default APPEND behavior.</code></pre>
+  Gap: User-defined gap between current and preceding interval, in meters (m). Overrides default APPEND behavior.
+  For instance, a Gap of 0.5 would result in a half-meter gap between the base of the preceding interval and
+  the top of the current interval. A Gap of 0 would result in no gap, the intervals would abut.</code></pre>
 </blockquote>
 <h3 id="affine-table">Affine Table</h3>
 <p>An affine table contains one row for every core in a project. Each row indicates the core's affine shift distance and associated metadata.</p>
