@@ -27,11 +27,13 @@ class Tracker():
     def get_uuid(self):
         user_uuid = None
         if os.path.exists(self.uuid_path):
+            self._remove_windows_line_endings()
             with open(self.uuid_path, 'rb') as uuidFileStream:
                 user_uuid = pickle.load(uuidFileStream)
         else:
             user_uuid = self.create_uuid()
             self.write_uuid(user_uuid)
+        print("Got UUID = {}".format(user_uuid))
         return user_uuid
 
     # create UUID, or use user_defined_uuid if defined
@@ -40,10 +42,20 @@ class Tracker():
 
     # write UUID to file
     def write_uuid(self, out_uuid):
-        with open(self.uuid_path, 'w+') as uuidFileStream:
+        with open(self.uuid_path, 'wb') as uuidFileStream:
             pickle.dump(out_uuid, uuidFileStream)
 
     # change UUID without pinging - intended for use by devs to create an ID
     # easily distinguishable from the auto-generated UUIDs of actual users
     def update_uuid(self, new_uuid):
         self.write_uuid(new_uuid)
+
+    # Python 3 doesn't play well with Windows line endings - remove
+    # them from the UUID pickle file if present
+    def _remove_windows_line_endings(self):
+        content = ""
+        with open(self.uuid_path, "rb") as f:
+            content = f.read()
+        with open(self.uuid_path, "wb") as f:
+            for line in content.splitlines():
+                f.write(line + str.encode("\n"))
