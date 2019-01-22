@@ -161,11 +161,17 @@ class FileTablePanel(QtWidgets.QWidget, DragAndDropMixin):
     def addFile(self, filepath):
         filename = os.path.basename(filepath)
         if filename not in self.mdPaths:
-            self.mdPaths[filename] = filepath 
-            self._makeRow(filename, self.depthColumnsProvider(filepath))
-            self._enableRemove()
+            try:
+                columnList = self.depthColumnsProvider(filepath)
+                self.mdPaths[filename] = filepath
+                self._makeRow(filename, columnList)
+                self._enableRemove()
+            except:
+                msg = "The provided file\n\n{}\n\ncould not be read. Measurement data " \
+                "must be in comma-separated values (CSV) format.".format(filepath)
+                errbox(self, message=msg)
         else:
-            logging.warn("File {} is already in the list".format(filename))
+            logging.warn("File {} is already in the list.".format(filename))
         
     def addFiles(self, filelist):
         for f in filelist:
