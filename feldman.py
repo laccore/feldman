@@ -95,6 +95,7 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     log.info("Using Section Summary {}".format(secSummPath))
     log.info("Using Sparse Splice {}".format(sparsePath))
     log.info("Options: Use Scaled Depths = {}, Lazy Append = {}, Manual Correlation File = {}".format(useScaledDepths, lazyAppend, manualCorrelationPath))
+    log.info("Using {} output vocabulary".format(OutputVocabulary))
     
     ss = SectionSummary.createWithFile(secSummPath)
     sp = SparseSplice.createWithFile(sparsePath)

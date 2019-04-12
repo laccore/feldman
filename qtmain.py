@@ -289,7 +289,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
         self.closeButton.setDefault(True)
 
     def showProgressLayout(self, show):
-        self.stackedLayout.setCurrentIndex(1 if show else 0)        
+        self.stackedLayout.setCurrentIndex(1 if show else 0)
         
     def splice(self):
         if len(self.mdList.getFiles()) == 0:
