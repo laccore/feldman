@@ -14,7 +14,6 @@ import gui
 import prefs
 import tabular.pandasutils as PU
 from tabular.csvio import FormatError
-import tracker
 import updateCheck
 
 class InvalidPathError(Exception):
@@ -38,7 +37,6 @@ class MainWindow(QtWidgets.QWidget):
 
         self.initGUI()
         self.initPrefs()
-        self.pingTracker()
         self.updateCheck()
 
     def updateCheck(self, silent=False):
@@ -98,11 +96,6 @@ class MainWindow(QtWidgets.QWidget):
         vocab = self.prefs.get("outputVocabulary", "IODP")
         self.orgCombo.setCurrentText(self.outputVocabDict[vocab])
 
-    def pingTracker(self):
-        uuidPath = os.path.join(Path.home(), ".feldman", "uuid.p") # .feldman dir created in initPrefs()
-        gatracker = tracker.Tracker(uuidPath, ["UA", "116679909", "1"])
-        gatracker.ping()
-    
     def savePrefs(self):
         self.prefs.set("windowGeometry", self.geometry())
         self.prefs.set("outputVocabulary", feldman.OutputVocabulary)
