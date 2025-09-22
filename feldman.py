@@ -40,7 +40,7 @@ def reportProgress(value, text):
 
 # pandas call to open Correlator's inexplicable " \t" delimited file formats 
 def openCorrelatorFunkyFormatFile(filename):
-    datfile = open(filename, 'rU')
+    datfile = open(filename, 'r')
     headers = ["Exp", "Site", "Hole", "Core", "CoreType", "Section", "TopOffset", "BottomOffset", "Depth", "Data", "RunNo"]
     _df = pandas.read_csv(datfile, header=None, names=headers, sep=" \t", skipinitialspace=True, comment="#", engine='python')
     datfile.close()

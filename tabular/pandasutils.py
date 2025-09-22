@@ -17,7 +17,7 @@ from .columns import find_match, find_all_starts_with
 
 # default utf-8-sig encoding ignores Byte Order Mark (BOM)
 def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=True,
-             engine='python', mode='rU', encoding='utf-8-sig'):
+             engine='python', mode='r', encoding='utf-8-sig'):
     success = False
     with open(filepath, mode) as srcfile:
         try:
