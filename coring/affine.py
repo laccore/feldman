@@ -62,7 +62,7 @@ class AffineTable:
             
 
 class AffineRow:
-    def __init__(self, site, hole, core, tool, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', fixedCore='', fixedTieCsf=numpy.NaN, shiftedTieCsf=numpy.NaN, dataUsed='', comment=''):
+    def __init__(self, site, hole, core, tool, csf, ccsf, cumOffset, diffOffset=0, growthRate='', shiftType='TIE', fixedCore='', fixedTieCsf=numpy.nan, shiftedTieCsf=numpy.nan, dataUsed='', comment=''):
         self.site = site
         self.hole = hole
         self.core = core

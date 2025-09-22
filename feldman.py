@@ -229,8 +229,8 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
             coreTop = secsumm.getCoreTop(site, hole, core) # use core's top for depths in affine table, not depth of TIE in splice
             affineShiftType = _spliceShiftToAffine(sptype, gap)
             fixedCore = prevRow['Hole'] + prevRow['Core'] if sptype == "TIE" else ""
-            fixedTieCsf = botCSFs[-1] if sptype == "TIE" else numpy.NaN
-            shiftedTieCsf = shiftTop if sptype == "TIE" else numpy.NaN
+            fixedTieCsf = botCSFs[-1] if sptype == "TIE" else numpy.nan
+            shiftedTieCsf = shiftTop if sptype == "TIE" else numpy.nan
             affineRow = aff.AffineRow(site, hole, core, row['Tool'], coreTop, coreTop + affine, affine, shiftType=affineShiftType,
                                       fixedCore=fixedCore, fixedTieCsf=fixedTieCsf, shiftedTieCsf=shiftedTieCsf, comment="splice") 
             affineRows.append(affineRow)
