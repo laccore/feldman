@@ -51,6 +51,9 @@ class MeasurementData:
 
     def getByCore(self, core):
         return self.df[self.df.Core == core]
+
+    def getByHole(self, hole):
+        return self.df[self.df.Hole == hole]
     
     
 class Tests(unittest.TestCase):
