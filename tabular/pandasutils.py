@@ -22,7 +22,7 @@ def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=Tr
     with open(filepath, mode) as srcfile:
         try:
             dataframe = pandas.read_csv(srcfile, nrows=nrows, sep=sep, skipinitialspace=skipinitialspace,
-                                        na_values=na_values, engine=engine, encoding=encoding)
+                                        na_values=na_values, engine=engine, encoding=encoding, skip_blank_lines=True)
             success = True
         except UnicodeDecodeError as msg:
             log.warn("Couldn't decode file in {} encoding: {}".format(encoding, msg))
