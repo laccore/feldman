@@ -164,17 +164,19 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
     for index, row in sparse.dataframe.iterrows():
         reportProgress(float(index) / rowsToProcess * 50, "Processing sparse splice interval {}...".format(index + 1))
 
-        log.debug("Interval {}".format(index + 1))
         site = row['Site']
         hole = row['Hole']
         core = row['Core']
         top = row['TopSection']
         topOff = row['TopOffset']
+        log.info(f"Converting Sparse Splice Interval {index+1}...")
+        log.info(f"  Top: {site}{hole}-{core}-{top} @ {topOff}cm")
         log.debug("top section = {}, top offset = {}".format(top, topOff))
         shiftTop = secsumm.getOffsetDepth(site, hole, core, top, topOff, useScaledDepths)
         
         bot = row['BottomSection']
         botOff = row['BottomOffset']
+        log.info(f"  Bottom: {site}{hole}-{core}-{bot} @ {botOff}cm")
         log.debug("bottom section = {}, bottom offset = {}".format(bot, botOff))
         shiftBot = secsumm.getOffsetDepth(site, hole, core, bot, botOff, useScaledDepths)
         
