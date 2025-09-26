@@ -315,7 +315,9 @@ class ProgressPanel(QtWidgets.QWidget):
         layout.addWidget(self.progress)
 
     def setValue(self, val):
-        self.progress.setValue(val)
+        # force integer value to circumvent TypeError: 'float' object cannot be
+        # interpreted as an integer (seemingly new to Python 3.10?)
+        self.progress.setValue(int(val))
 
     def setText(self, text):
         self.label.setText(text)
