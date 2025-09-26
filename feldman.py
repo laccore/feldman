@@ -552,17 +552,3 @@ class Test(unittest.TestCase):
 if __name__ == "__main__":
     log.basicConfig(level=log.INFO)
     unittest.main()
-
-    # convert sparse splice to SIT
-#     ssPath = "[section summary path]"
-#     sparsePath = "[sparse splice path]"
-#     basepath = "[root export path and filename prefix]"
-#     affPath = basepath + appendDate("_AffineFromSparse") + ".csv"
-#     sitPath = basepath + appendDate("_SITFromSparse") + ".csv"
-#     convertSparseSpliceToSIT(ssPath, sparsePath, affPath, sitPath)
-
-    # splice measurement data    
-#     for mdPath in mdFilePaths:
-#         path, ext = os.path.splitext(mdPath)
-#         exportPath = path + "_spliced" + ext
-#         exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, includeOffSplice=False, wholeSpliceSection=False)
