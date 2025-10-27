@@ -1,11 +1,11 @@
 Feldman User's Guide
 --------------------
-*September 10, 2018*
-*version 1.0.4*
+*October 27, 2025*  
+*version 1.0.5*
 
 ## Introduction
 
-Feldman is a software utility developed by [LacCore/CSDCO](https://csdco.umn.edu) to aid in the process of
+Feldman is a software utility developed by [CSD Facility](https://cse.umn.edu/csd) to aid in the process of
 aligning and splicing core sections from multiple holes, and exporting measurement data based on a splice.
 It runs on Macs (OSX, macOS) and Windows.
 
@@ -49,7 +49,7 @@ A list of all formats supported by Feldman follows:
 
 ### Section Summary
 A section summary table contains one row for each section in a project.
-It is used to translate section depths to total depth, and as a "master list" of a
+It is used to translate section depths to total depth, and is a "master list" of a
 project's core sections. Sections that may not be included in a splice, but are part
 of measurement data to be spliced, should be included.
 
@@ -72,7 +72,7 @@ It may optionally include:
 ### Sparse Splice
 A sparse splice table contains one row for each interval of a sparse splice.
 Each interval is defined only in section depths, not total depths. The term "sparse"
-comes from the lack of total depths.
+refers to the lack of total depths.
 
 A sparse splice table must include the following columns:
 
@@ -292,7 +292,3 @@ because that section isn't part of the splice interval.
 Once input data and options are selected, click Splice Data. Major steps of the splicing process will
 be noted in the Log window. If the "Include Debugging Information" checkbox is checked, a far more
 detailed account of the process is provided, which can be helpful in the case of errors or unexpected outputs.
-
-
-
-
