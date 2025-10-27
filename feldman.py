@@ -506,7 +506,13 @@ def fillAffineRows(affineRows):
             mbsfVals.append(row.csf)
             mcdVals.append(row.ccsf)
             if len(mbsfVals) > 1:
-                row.growthRate = round(numpy.polyfit(mbsfVals, mcdVals, 1)[0], 3)
+                try:
+                    row.growthRate = round(numpy.polyfit(mbsfVals, mcdVals, 1)[0], 3)
+                except Exception as e:
+                    mbsfMcdPairs = [f"{(mbsfVals[i], mcdVals[i])}" for i in range(len(mbsfVals))]
+                    mbsfMcdPairsStr = ','.join(mbsfMcdPairs)
+                    log.warn(f"Could not compute growth rate for {row.site}{row.hole}-{row.core}\n  {e}\n  (mbsf, mcd) pairs: {mbsfMcdPairsStr}")
+                    row.growthRate = 0.0
             else:
                 row.growthRate = 0.0
     
