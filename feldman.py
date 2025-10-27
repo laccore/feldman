@@ -300,6 +300,8 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, 
     
     affine = aff.AffineTable.createWithFile(affinePath)
     sit = si.SpliceIntervalTable.createWithFile(sitPath)
+    log.info("Loaded SIT with following datatypes:")
+    log.debug(sit.df.dtypes)
     md = meas.MeasurementData.createWithFile(mdPath, depthColumn)
     log.info("Loaded {} rows of data from {}".format(len(md.df.index), mdPath))
     log.debug(md.df.dtypes)
@@ -409,7 +411,7 @@ def gatherOffSpliceAffines(sit, secsumm, mancorr):
         else:
             onSpliceCores.append(row)
             
-    log.info("Found {} off-splice cores in {} section summary cores for sites {} - skipped {} non-site cores".format(len(offSpliceCores), len(ssCores), secsumm.getSites(), skippedCoreCount))
+    log.info("Found {} off-splice cores in {} section summary cores for sites {} - skipped {} non-site cores".format(len(offSpliceCores), len(ssCores), sorted(secsumm.getSites()), skippedCoreCount))
 
     osAffineShifts = {}
     affineRows = []
