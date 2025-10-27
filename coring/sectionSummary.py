@@ -159,14 +159,14 @@ class SectionSummary:
         df = self.dataframe
         cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core)]
         if cores.empty:
-            log.warn("SectionSummary: Could not find core {}-{}{}".format(site, hole, core))
+            log.warning("SectionSummary: Could not find core {}-{}{}".format(site, hole, core))
         return cores
 
     def _findSection(self, site, hole, core, section):
         df = self.dataframe
         sectionRow = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.Section == section)]
         if sectionRow.empty:
-            log.warn("SectionSummary: Could not find {}-{}{}-{}".format(site, hole, core, section))
+            log.warning("SectionSummary: Could not find {}-{}{}-{}".format(site, hole, core, section))
         return sectionRow
     
     def _findSectionAtDepth(self, site, hole, core, depth):

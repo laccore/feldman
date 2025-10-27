@@ -171,7 +171,7 @@ class FileTablePanel(QtWidgets.QWidget, DragAndDropMixin):
                 "must be in comma-separated values (CSV) format.".format(filepath)
                 errbox(self, message=msg)
         else:
-            logging.warn("File {} is already in the list.".format(filename))
+            logging.warning("File {} is already in the list.".format(filename))
         
     def addFiles(self, filelist):
         for f in filelist:

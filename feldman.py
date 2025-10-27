@@ -361,9 +361,9 @@ def exportMeasurementData(affinePath, sitPath, mdPath, exportPath, depthColumn, 
         
         unwritten = offSpliceDF[~(offSpliceDF.index.isin(pandas.concat(offSpliceRows).index))].copy() # rows that still haven't been written!
         if len(unwritten.index) > 0:
-            log.warn("Of {} off-splice rows, {} were not included in the export.".format(totalOffSplice, len(unwritten)))
+            log.warning("Of {} off-splice rows, {} were not included in the export.".format(totalOffSplice, len(unwritten)))
             unwrittenPath = os.path.splitext(mdPath)[0] + "-unwritten.csv"
-            log.warn("Those rows will be saved to {}".format(unwrittenPath))
+            log.warning("Those rows will be saved to {}".format(unwrittenPath))
             prettyColumns(unwritten, meas.MeasurementFormat)
             writeToCSV(unwritten, unwrittenPath)
     
@@ -513,7 +513,7 @@ def fillAffineRows(affineRows):
                 except Exception as e:
                     mbsfMcdPairs = [f"{(mbsfVals[i], mcdVals[i])}" for i in range(len(mbsfVals))]
                     mbsfMcdPairsStr = ','.join(mbsfMcdPairs)
-                    log.warn(f"Could not compute growth rate for {row.site}{row.hole}-{row.core}\n  {e}\n  (mbsf, mcd) pairs: {mbsfMcdPairsStr}")
+                    log.warning(f"Could not compute growth rate for {row.site}{row.hole}-{row.core}\n  {e}\n  (mbsf, mcd) pairs: {mbsfMcdPairsStr}")
                     row.growthRate = 0.0
             else:
                 row.growthRate = 0.0

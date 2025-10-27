@@ -25,10 +25,10 @@ def readFile(filepath, nrows=None, na_values=None, sep=None, skipinitialspace=Tr
                                         na_values=na_values, engine=engine, encoding=encoding, skip_blank_lines=True)
             success = True
         except UnicodeDecodeError as msg:
-            log.warn("Couldn't decode file in {} encoding: {}".format(encoding, msg))
+            log.warning("Couldn't decode file in {} encoding: {}".format(encoding, msg))
     
     if not success:
-        log.warn("Attempting to open with default encoding...")
+        log.warning("Attempting to open with default encoding...")
         with open(filepath, mode) as srcfile:
             dataframe = pandas.read_csv(srcfile, nrows=nrows, sep=sep, skipinitialspace=skipinitialspace,
                                         na_values=na_values, engine=engine) # try default encoding

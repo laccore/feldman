@@ -48,9 +48,9 @@ class AffineTable:
         df = self.dataframe
         cores = df[(df.Site == site) & (df.Hole == hole) & (df.Core == core) & (df.Tool == tool)]
         if cores.empty:
-            log.warn("AffineTable: Could not find core {}{}-{}{}".format(site, hole, core, tool))
+            log.warning("AffineTable: Could not find core {}{}-{}{}".format(site, hole, core, tool))
         elif len(cores) > 1:
-            log.warn("AffineTable: Found multiple matches for core {}{}-{}{}".format(site, hole, core, tool))
+            log.warning("AffineTable: Found multiple matches for core {}{}-{}{}".format(site, hole, core, tool))
         return cores.iloc[0]['Offset']
     
     def allRows(self):
