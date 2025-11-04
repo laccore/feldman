@@ -1,6 +1,6 @@
 Feldman User's Guide
 --------------------
-*October 27, 2025*  
+*November 4, 2025*  
 *version 1.0.5*
 
 ## Introduction
@@ -229,17 +229,21 @@ are named MySparseSplice-affine.csv and MySparseSplice-SIT.csv, respectively.
 Click the "..." buttons to select section summary and sparse splice files as input. Alternately,
 files can be dragged and dropped into the interface.
 
-Manual Correlation: Optional. By default, Feldman sets the affine offset of an off-splice core to the affine offset of
+**Manual Correlation:** Optional. By default, Feldman sets the affine offset of an off-splice core to the affine offset of
 the nearest on-splice core in the same hole. Default affine offsets can be overriden by providing a manual correlation.
 Manual Correlation Tie Tables or Manual Offset Tables are accepted as valid Manual Correlation input.
 
-Use Scaled Depths: if checked, the section summary's scaled depths will be used to map
+**Use Scaled Depths:** if checked, the section summary's scaled depths will be used to map
 section depth to total depth. Unscaled depths are the default.
 
-Lazy Append: if checked, for an APPEND operation, the affine shift of the previous core in the splice
+**Lazy Append:** if checked, for an APPEND operation, the affine shift of the previous core in the splice
 will be used for the current core, even if they're from different holes. By default, the gap between
 the previous core's bottom and the current core's top will be computed in scaled depth and used for
 the current core's affine shift.
+
+**Set Start Splice Depth:** if checked, the splice will start at the specified depth (in meters) instead
+of the default Section Summary-derived depth of the first splice interval's top offset. This is achieved
+by affine shifting the interval's core to align its top offset with the specified start depth.
 
 Once input data and options are selected, click Convert. Major steps of the conversion process will
 be noted in the Log window. If the "Include Debugging Information" checkbox is checked, a far more
@@ -278,11 +282,11 @@ Alternately, files can be selected by dragging them into the interface.
 Select the column to use as the Depth Column for each measurement data file to be spliced. Only
 those columns with numeric values will be included in this list.
 
-Off Splice: if checked, rows of data that are off-splice are included with On-Splice value 'off-splice'.
+**Off Splice:** if checked, rows of data that are off-splice are included with On-Splice value 'off-splice'.
 If the input measurement data file contains rows from sections that are not part of the input affine
 table, such rows will be written to a file with "-unwritten" appended to the input file's name.
 
-Whole Section Splice: if checked, all rows of data from on-splice core sections will be included
+**Whole Section Splice:** if checked, all rows of data from on-splice core sections will be included
 with On-Splice value 'splice'. For example, consider a splice interval with
 top section 1 at depth 20cm and bottom section 2 at depth 90cm. If Whole Section is checked,
 *all* measurements from section 1 and 2 will be included, even those above 20cm in section 1
