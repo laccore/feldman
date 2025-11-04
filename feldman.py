@@ -88,13 +88,17 @@ def validSectionColumn(df, colname):
         return False
     return True
 
-# options: LazyAppend, UseScaledDepths, Manual Correlation File 
-def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False, manualCorrelationPath=None):
+# - secSummPath: path to Section Summary file
+# - sparsePath: path to Sparse Splice file
+# - affineOutPath: path to write generated Affine File
+# - manualCorrelationPath: path to manual correlation file to use; defaults to None
+# See sparseSpliceToSIT() for other parameter descriptions.
+def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths=False, lazyAppend=False, sparseSpliceDepth=None, manualCorrelationPath=None):
     log.info("--- Converting Sparse Splice to Affine and SIT ---")
     log.info("{}".format(datetime.now()))
     log.info("Using Section Summary {}".format(secSummPath))
     log.info("Using Sparse Splice {}".format(sparsePath))
-    log.info("Options: Use Scaled Depths = {}, Lazy Append = {}, Manual Correlation File = {}".format(useScaledDepths, lazyAppend, manualCorrelationPath))
+    log.info(f"Options:\n  Use Scaled Depths = {useScaledDepths}\n  Lazy Append = {lazyAppend}\n  Sparse Splice Depth = {sparseSpliceDepth}\n  Manual Correlation File = {manualCorrelationPath}")
     log.info("Using {} output vocabulary".format(OutputVocabulary))
     
     ss = SectionSummary.createWithFile(secSummPath)
@@ -107,7 +111,7 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
     if not validSectionColumn(ss.dataframe, 'Section'):
         raise FormatError("Section column in Section Summary contains one or more non-integer values.")
 
-    onSpliceAffRows = sparseSpliceToSIT(sp, ss, sitOutPath, useScaledDepths, lazyAppend)
+    onSpliceAffRows = sparseSpliceToSIT(sp, ss, sitOutPath, useScaledDepths, lazyAppend, sparseSpliceDepth)
     
     # load just-created SIT and find affines for off-splice cores
     sit = si.SpliceIntervalTable.createWithFile(sitOutPath)
@@ -146,7 +150,9 @@ def convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useS
 # - useScaledDepths: convert section depths to total depth using ScaledTopDepth and ScaledBottomDepth
 #   in SectionSummary instead of (unscaled) TopDepth and BottomDepth
 # - lazyAppend: use previous core's affine shift even if it's from a different hole
-def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAppend=False):
+# - spliceStartDepth: If not None, depth (in meters) at which to position the first splice interval's top.
+#   Interval will be affine shifted as necessary to achieve this.
+def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAppend=False, spliceStartDepth=None):
     seenCores = [] # list of cores that have already been added to affine
     affineRows = [] # list of dicts, each representing a generated affine table row
     
@@ -186,8 +192,10 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
             return
         
         affine = 0.0
-        if sptype is None: # first row - unconcerned about splice type now, it will affect next row of data
-            affine = 0.0
+        if sptype is None and index == 0: # first row - unconcerned about splice type now, it will affect next row of data
+            if spliceStartDepth is not None:
+                affine = spliceStartDepth - shiftTop
+                log.info(f"Shifting first splice interval by {affine} to start at Splice Start Depth {spliceStartDepth} m")
             log.debug("First interval, splice type irrelevant")
         elif sptype == "APPEND":
             if gap is not None: # user-specified gap
