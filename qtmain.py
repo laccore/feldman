@@ -138,6 +138,23 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         self.lazyAppend = QtWidgets.QCheckBox("Lazy Append")
         vlayout.addLayout(gui.HelpTextDecorator(self.useScaledDepths, "Use section summary's scaled depths to map section depth to total depth. Unscaled depths are the default."))
         vlayout.addLayout(gui.HelpTextDecorator(self.lazyAppend, "Always use previous core's affine shift for the current APPEND core operation."))
+
+        self.ssdCheckbox = QtWidgets.QCheckBox("Set Splice Start Depth:")
+        self.ssdCheckbox.clicked.connect(self.startSpliceDepthCheckboxClicked)
+        self.ssdEdit = QtWidgets.QLineEdit(self)
+        self.ssdEdit.setFixedWidth(60)
+        self.ssdEdit.setEnabled(False)
+        self.ssdMetersLabel = QtWidgets.QLabel("m")
+        self.ssdMetersLabel.setEnabled(False)
+        ssdLayout = QtWidgets.QHBoxLayout(self)
+        ssdLayout.setSpacing(0)
+        ssdLayout.addWidget(self.ssdCheckbox)
+        ssdLayout.addSpacerItem(QtWidgets.QSpacerItem(10,0))
+        ssdLayout.addWidget(self.ssdEdit)
+        ssdLayout.addSpacerItem(QtWidgets.QSpacerItem(2,0))
+        ssdLayout.addWidget(self.ssdMetersLabel)
+        ssdLayout.addStretch()
+        vlayout.addLayout(gui.HelpTextLayoutDecorator(ssdLayout, "Start splice at the specified depth instead of Section Summary-derived depth of the first splice interval's top offset."))
         
         self.logText = gui.LogTextArea(self.parent, "Log")
         vlayout.addLayout(self.logText.layout, stretch=1)
@@ -161,6 +178,11 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
 
         # if called before self.stackedLayout is added to vlayout, default-ness is lost, unsure why
         self.closeButton.setDefault(True)
+
+    def startSpliceDepthCheckboxClicked(self):
+        enable = self.ssdCheckbox.isChecked()
+        self.ssdEdit.setEnabled(enable)
+        self.ssdMetersLabel.setEnabled(enable)
 
     def showProgressLayout(self, show):
         self.stackedLayout.setCurrentIndex(1 if show else 0)
@@ -198,6 +220,11 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         
         useScaledDepths = self.useScaledDepths.isChecked()
         lazyAppend = self.lazyAppend.isChecked()
+        try:
+            sparseSpliceDepth = float(self.ssdEdit.text()) if self.ssdCheckbox.isChecked() else None
+        except ValueError as err:
+            gui.errbox(self, "Invalid Depth", f"Sparse Splice Depth '{self.ssdEdit.text()}' cannot be converted to a number.")
+            return
         
         basePath, ext = os.path.splitext(sparsePath)
         affineOutPath = basePath + "-Affine" + ext
@@ -214,7 +241,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
             self.logText.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
             self.logText.logText.clear()
             feldman.setProgressListener(self.progressPanel)
-            feldman.convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths, lazyAppend, manCorrPath)
+            feldman.convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths, lazyAppend, sparseSpliceDepth, manCorrPath)
         except KeyError as err:
             gui.errbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
             logging.error(traceback.format_exc())
