@@ -379,6 +379,15 @@ def HelpTextDecorator(widget, helpText, spacing=5):
     layout.addWidget(LabelFactory.makeDescLabel(helpText))
     return layout
 
+# add help text below layout
+def HelpTextLayoutDecorator(layoutToDecorate, helpText, spacing=5):
+    layout = QtWidgets.QVBoxLayout()
+    layout.setSpacing(spacing)
+    layout.setContentsMargins(0,0,0,0)
+    layout.addLayout(layoutToDecorate)
+    layout.addWidget(LabelFactory.makeDescLabel(helpText))
+    return layout
+
 # create appropriately-sized labels for the current OS
 class LabelFactory:
     # main label for an item
