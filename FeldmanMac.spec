@@ -33,4 +33,5 @@ exe = EXE(pyz,
 app = BUNDLE(exe,
              name='Feldman.app',
              icon='assets/feldmanicon.icns',
-             bundle_identifier=None)
+             bundle_identifier=None,
+             version='1.0.5')
