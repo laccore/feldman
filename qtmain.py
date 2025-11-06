@@ -7,7 +7,7 @@ Created on Jul 30, 2017
 import os, sys, logging, traceback, webbrowser
 from pathlib import Path
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 import feldman
 import gui
@@ -234,6 +234,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
         self.convertButton.setText("Converting...")
         self.convertButton.setEnabled(False)
         
+        success = False
         try:
             self.showProgressLayout(True)
             logging.getLogger().addHandler(self.logText)
@@ -242,6 +243,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
             self.logText.logText.clear()
             feldman.setProgressListener(self.progressPanel)
             feldman.convertSparseSplice(secSummPath, sparsePath, affineOutPath, sitOutPath, useScaledDepths, lazyAppend, sparseSpliceDepth, manCorrPath)
+            success = True
         except KeyError as err:
             gui.errbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
             logging.error(traceback.format_exc())
@@ -258,6 +260,10 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
             self.closeButton.setEnabled(True)
             self.convertButton.setText("Convert")
             self.convertButton.setEnabled(True)
+            imgpath = f"images/{'success.png' if success else 'failure.png'}"
+            if os.path.exists(imgpath):
+                dlg = ResultDialog(self, success, imgpath)
+                dlg.exec_()
         
     def closeEvent(self, event):
         self.savePrefs()
@@ -335,6 +341,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
         self.spliceButton.setEnabled(False)
         
         # splice measurement data
+        success = False
         try:
             self.showProgressLayout(True)
             feldman.setProgressListener(self.progressPanel)
@@ -345,6 +352,7 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             for mdPath, depthColumn, includeOffSplice, wholeSpliceSection in spliceParams:
                 outPath = os.path.splitext(mdPath)[0] + "-spliced.csv"
                 feldman.exportMeasurementData(affinePath, sitPath, mdPath, outPath, depthColumn, includeOffSplice, wholeSpliceSection)
+            success = True
         except KeyError as err:
             gui.warnbox(self, "Process failed", "{}".format("Expected column {} not found".format(err)))
             logging.error(traceback.format_exc())
@@ -358,6 +366,10 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
             self.closeButton.setEnabled(True)
             self.spliceButton.setText("Splice Data")
             self.spliceButton.setEnabled(True)
+            imgpath = f"images/{'success.png' if success else 'failure.png'}"
+            if os.path.exists(imgpath):
+                dlg = ResultDialog(self, success, imgpath)
+                dlg.exec_()
 
     def installPrefs(self):
         geom = self.parent.prefs.get("spliceMeasurementDataWindowGeometry", None)
@@ -377,6 +389,33 @@ class SpliceMeasurementDataDialog(QtWidgets.QDialog):
     def closeEvent(self, event):
         self.savePrefs()
         self.accept()    
+
+
+class ResultDialog(QtWidgets.QDialog):
+    def __init__(self, parent, success, imgpath):
+        QtWidgets.QDialog.__init__(self, parent)
+        self.parent = parent
+        self.success = success
+        self.imgpath = imgpath
+        self.initGUI()
+        
+    def initGUI(self):
+        self.setWindowTitle("Splice Measurement Data")
+        vlayout = QtWidgets.QVBoxLayout(self)
+        vlayout.setSpacing(20)
+
+        self.messageLabel = QtWidgets.QLabel("Feldman Success!" if self.success else "Feldman Failure!")
+        vlayout.addWidget(self.messageLabel)
+
+        pixmap = QtGui.QPixmap(self.imgpath)
+        resultLabel = QtWidgets.QLabel(self)
+        resultLabel.setPixmap(pixmap)
+        vlayout.addWidget(resultLabel)
+
+        self.closeButton = QtWidgets.QPushButton("Close")
+        self.closeButton.clicked.connect(self.close)
+        self.closeButton.setDefault(True)
+        vlayout.addWidget(self.closeButton)
 
 
 if __name__ == '__main__':
