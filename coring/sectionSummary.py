@@ -65,14 +65,14 @@ class SectionSummary:
         depth = secTop + (offset/100.0) - (self.getTotalGapAboveSectionDepth(site, hole, core, section, offset)/100.0)
             
         # if using scaled depths, compress depth to drilled interval
-        drilledLength = (secBot - secTop) * 100.0 # cm
+        drilledLength = secBot - secTop
         if scaledDepth and curatedLength > drilledLength:
             compressionFactor = drilledLength / curatedLength
             compressedDepth = secTop + (offset/100.0 * compressionFactor)
-            log.warning("   section {}: curated length {}cm exceeds drilled length {}cm, compressing depth {}m to {}m".format(sectionId, curatedLength, drilledLength, depth, compressedDepth))
+            log.warning(f"   section {sectionId}: curated length {curatedLength:.3f}m exceeds drilled length {drilledLength:.3f}m, compressing depth {depth:.3f}m to {compressedDepth:.3f}m")
             depth = compressedDepth
             
-        return depth        
+        return depth
     
     # return depth of top of top section, bottom of bottom section
     def getCoreRange(self, site, hole, core):
@@ -254,7 +254,7 @@ def convertSSGapColumnsToSingle(sspath, outpath, maxGapCols):
 
 class TestSectionSummary(unittest.TestCase):    
     def test_create(self):
-        ss = SectionSummary.createWithFile("../testdata/GLAD9_SectionSummary.csv")
+        ss = SectionSummary.createWithFile("testdata/GLAD9_SectionSummary.csv")
         self.assertTrue(len(ss.getSites()) == 7)        
         self.assertTrue(ss.containsCore('1', 'A', '33'))
         self.assertFalse(ss.containsCore('1', 'A', '34'))
@@ -262,7 +262,7 @@ class TestSectionSummary(unittest.TestCase):
         self.assertTrue(ss.getSectionAtDepth('1', 'B', '2', 4.4) == '3')
     
     def test_gaps(self):
-        ss = SectionSummary.createWithFile("../testdata/SectionSummaryWithGaps.csv")
+        ss = SectionSummary.createWithFile("testdata/SectionSummaryWithGaps.csv")
         self.assertTrue(ss.getGaps('1', 'A', '2', '1') == [])
         self.assertTrue(ss.getGaps('1', 'A', '3', '2') == [(0.0, 2.5)])
         self.assertTrue(ss.getTotalGapAboveSectionDepth('1', 'A', '3', '2', 0.0) == 0.0)
@@ -273,14 +273,41 @@ class TestSectionSummary(unittest.TestCase):
         
     # confirm optional Gaps column is added if missing
     def test_gaps_column(self):
-        ss = SectionSummary.createWithFile("../testdata/SectionSummaryNoGaps.csv")
+        ss = SectionSummary.createWithFile("testdata/SectionSummaryNoGaps.csv")
         self.assertTrue('Gaps' in ss.dataframe)
         self.assertTrue(ss.getGaps('1', 'A', '2', '1') == [])
     
     # confirm FormatError if any required column is missing 
     def test_missing_req_column(self):
-        self.assertRaises(FormatError, SectionSummary.createWithFile, "../testdata/SectionSummaryNoSite.csv")
+        self.assertRaises(FormatError, SectionSummary.createWithFile, "testdata/SectionSummaryNoSite.csv")
+
+    def test_get_offset_depth(self):
+        ss = SectionSummary.createWithFile('testdata/TEST_SectionSummary.csv')
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '1', 0.0) == 0.0)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '1', 0.0, scaledDepth=True) == 0.0)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '1', 100.0) == 1.0)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '1', 100.0, scaledDepth=True) == 0.9)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '1', 50.0) == 0.5)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '1', 50.0, scaledDepth=True) == 0.45)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '2', 0.0) == 1.0)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '2', 0.0, scaledDepth=True) == 0.9)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '2', 100.0) == 2.0)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '1', '2', 100.0, scaledDepth=True) == 1.8)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '2', '3', 0.0) == 5.0)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '2', '3', 0.0, scaledDepth=True) == 4.5)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '2', '3', 50.0) == 5.5)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '2', '3', 50.0, scaledDepth=True) == 4.95)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '2', '3', 100.0) == 6.0)
+        self.assertTrue(ss.getOffsetDepth('1', 'A', '2', '3', 100.0, scaledDepth=True) == 5.4)
+        self.assertTrue(ss.getOffsetDepth('1', 'B', '2', '1', 0.0) == 2.5)
+        self.assertTrue(ss.getOffsetDepth('1', 'B', '2', '1', 0.0, scaledDepth=True) == 2.25)
+        self.assertTrue(ss.getOffsetDepth('1', 'B', '2', '1', 50.0) == 3.0)
+        self.assertTrue(ss.getOffsetDepth('1', 'B', '2', '1', 50.0, scaledDepth=True) == 2.7)
+        self.assertTrue(ss.getOffsetDepth('1', 'B', '2', '1', 100.0) == 3.5)
+        self.assertTrue(ss.getOffsetDepth('1', 'B', '2', '1', 100.0, scaledDepth=True) == 3.15)
     
+# 3/11/2026 Must run as a module from parent dir for imports and test file
+# paths to work properly: python -m coring.sectionSummary
 if __name__ == "__main__":
     for testcase in [TestSectionSummary]:
         suite = unittest.TestLoader().loadTestsFromTestCase(testcase)
