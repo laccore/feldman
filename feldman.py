@@ -38,41 +38,6 @@ def reportProgress(value, text):
     if ProgressListener:
         ProgressListener.setValueAndText(value, text)
 
-# pandas call to open Correlator's inexplicable " \t" delimited file formats 
-def openCorrelatorFunkyFormatFile(filename):
-    datfile = open(filename, 'r')
-    headers = ["Exp", "Site", "Hole", "Core", "CoreType", "Section", "TopOffset", "BottomOffset", "Depth", "Data", "RunNo"]
-    _df = pandas.read_csv(datfile, header=None, names=headers, sep=" \t", skipinitialspace=True, comment="#", engine='python')
-    datfile.close()
-    #print df.dtypes
-    # df can now be written to a normal CSV
-    
-
-# get total depth of a section offset using SectionSummary data and curated lengths if available
-def getOffsetDepth(secsumm, site, hole, core, section, offset, scaledDepth=False):
-    secTop = secsumm.getSectionTop(site, hole, core, section) if not scaledDepth else secsumm.getScaledSectionTop(site, hole, core, section) 
-    secBot = secsumm.getSectionBot(site, hole, core, section) if not scaledDepth else secsumm.getScaledSectionBot(site, hole, core, section)
-    scaledTxt = "scaled " if scaledDepth else ""
-    sectionId = "{}{}-{}-{}".format(site, hole, core, section)
-    log.debug("   {}section: {}, top = {}m, bot = {}m".format(scaledTxt, sectionId, secTop, secBot))
-    log.debug("   {}section offset = {}cm + {}m = {}m".format(scaledTxt, offset, secTop, secTop + offset/100.0))
-
-    curatedLength = secsumm.getSectionLength(site, hole, core, section)
-    if offset/100.0 > curatedLength:
-        log.warning("   section {}: offset {}cm is beyond curated length of section {}m".format(sectionId, offset, curatedLength))
-
-    depth = secTop + (offset/100.0) - (secsumm.getTotalGapAboveSectionDepth(site, hole, core, section, offset)/100.0)
-        
-    # if using scaled depths, compress depth to drilled interval
-    drilledLength = (secBot - secTop) * 100.0 # cm
-    if scaledDepth and curatedLength > drilledLength:
-        compressionFactor = drilledLength / curatedLength
-        compressedDepth = secTop + (offset/100.0 * compressionFactor)
-        log.warning("   section {}: curated length {}cm exceeds drilled length {}cm, compressing depth {}m to {}m".format(sectionId, curatedLength, drilledLength, depth, compressedDepth))
-        depth = compressedDepth
-        
-    return depth
-
 # Check a Section column's values: return True if all values are
 # are either integers or the string 'CC', otherwise False
 def validSectionColumn(df, colname):
