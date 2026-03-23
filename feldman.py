@@ -143,13 +143,13 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
         topOff = row['TopOffset']
         log.info(f"Converting Sparse Splice Interval {index+1}...")
         log.info(f"  Top: {site}{hole}-{core}-{top} @ {topOff}cm")
-        log.debug("top section = {}, top offset = {}".format(top, topOff))
+        log.debug(f"top section = {top}, top offset = {topOff}")
         shiftTop = secsumm.getOffsetDepth(site, hole, core, top, topOff, useScaledDepths)
         
         bot = row['BottomSection']
         botOff = row['BottomOffset']
         log.info(f"  Bottom: {site}{hole}-{core}-{bot} @ {botOff}cm")
-        log.debug("bottom section = {}, bottom offset = {}".format(bot, botOff))
+        log.debug(f"bottom section = {bot}, bottom offset = {botOff}")
         shiftBot = secsumm.getOffsetDepth(site, hole, core, bot, botOff, useScaledDepths)
         
         # bail on inverted or zero-length intervals
@@ -166,35 +166,38 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
             if gap is not None: # user-specified gap
                 gapEndDepth = prevBotCCSF + gap 
                 affine = gapEndDepth - shiftTop
-                log.debug("User specified gap of {}m between previous bottom ({}m) and current top ({}m), affine = {}m".format(gap, prevBotCCSF, shiftTop, affine))
+                log.debug(f"User specified gap of {gap:.3f}m between previous bottom ({prevBotCCSF:.3f}m) and current top ({shiftTop:.3f}m), affine = {affine:.3f}m")
             else: # default gap
                 assert len(prevRow) > 0
                 if hole == prevRow['Hole'] or lazyAppend: # hole hasn't changed, use same affine shift
                     affine = prevAffine
-                    log.debug("APPENDing {} at depth {} based on previous affine {}".format(shiftTop, shiftTop + affine, affine))
+                    log.debug(f"APPENDing {shiftTop:.3f} at depth {shiftTop + affine:.3f} based on previous affine {affine:.3f}")
                 else: # different hole, use scaled depths to determine gap
+                    log.debug(f"APPEND interval {site}{hole}-{core} is from different hole than previous interval, determine gap from scaled depths")
                     prevBotScaledDepth = secsumm.getOffsetDepth(prevRow['Site'], prevRow['Hole'], prevRow['Core'],
                                                         prevRow['BottomSection'], prevRow['BottomOffset'], scaledDepth=True)
                     topScaledDepth = secsumm.getOffsetDepth(site, hole, core, top, topOff, scaledDepth=True)
+                    log.debug(f"  {prevRow['Site']}{prevRow['Hole']}-{prevRow['Core']} bottom offset = {prevBotScaledDepth:.3f}m (CSF-B)")
+                    log.debug(f"  {site}{hole}-{core} top offset = {topScaledDepth:.3f}m (CSF-B)")
                     scaledGap = topScaledDepth - prevBotScaledDepth
                     if scaledGap < 0.0:
-                        log.warning("Bottom of previous interval is {}m *above* top of next interval in CSF-B space".format(scaledGap))
+                        log.warning(f"Bottom of previous interval is {abs(scaledGap):.3f}m below top of next interval in CSF-B space")
                     affine = (prevBotCCSF - shiftTop) + scaledGap
-                    log.debug("Inter-hole APPENDing {} at depth {} to preserve scaled (CSF-B) gap of {}m".format(shiftTop, shiftTop + affine, scaledGap))
+                    log.debug(f"Inter-hole APPENDing {shiftTop:.3f} at depth {shiftTop + affine:.3f} to preserve scaled (CSF-B) gap of {abs(scaledGap):.3f}m")
         elif sptype == "TIE":
             # affine = difference between prev bottom MCD and MBLF of current top
             affine = prevBotCCSF - shiftTop
-            log.debug("TIEing {} to previous bottom depth {}, affine shift of {}".format(shiftTop, prevBotCCSF, affine))
+            log.debug(f"TIEing {shiftTop:.3f} to previous bottom depth {prevBotCCSF:.3f}, affine shift of {affine:.3f}")
         else:
             raise Exception(f"Encountered unknown splice type {sptype}, bailing out!")
 
         if prevBotCCSF is not None and prevBotCCSF > shiftTop + affine:
-            log.warning("previous interval bottom MCD {} is below current interval top MCD {}".format(prevBotCCSF, shiftTop + affine))
+            log.warning(f"previous interval bottom MCD {prevBotCCSF:.3f} is below current interval top MCD {shiftTop + affine:.3f}")
             # increase affine to prevent overlap in case of APPEND - this should never happen for a TIE
             if sptype == "APPEND":
                 overlap = prevBotCCSF - (shiftTop + affine)                
                 affine += overlap 
-                log.warning("interval type APPEND, adjusting affine to {}m to avoid {}m overlap".format(affine, overlap))
+                log.warning(f"interval type APPEND, adjusting affine to {affine:.3f}m to avoid {overlap:.3f}m overlap")
 
         # create data for corresponding affine - growth rate and differential offset will be filled by fillAffineRows()
         if core_id not in seenCores:
@@ -222,7 +225,7 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
         
         botCSFs.append(shiftBot)
         botCCSFs.append(shiftBot + affine)
-        log.debug("shifted top = {}m, bottom = {}m".format(shiftTop + affine, shiftBot + affine))
+        log.debug(f"shifted top = {shiftTop + affine:.3f}m, bottom = {shiftBot + affine:.3f}m")
         
         prevBotCCSF = shiftBot + affine
         prevAffine = affine
@@ -241,8 +244,8 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
     PU.insertColumns(sitDF, 6, [(si.TopDepthCSF.name, pandas.Series(topCSFs)), (si.TopDepthCCSF.name, pandas.Series(topCCSFs))])
     PU.insertColumns(sitDF, 10, [(si.BottomDepthCSF.name, pandas.Series(botCSFs)), (si.BottomDepthCCSF.name, pandas.Series(botCCSFs))])
     
-    log.info("writing splice interval table to {}".format(os.path.abspath(sitOutPath)))
-    log.debug("splice interval table column types:{}".format(sitDF.dtypes))
+    log.info(f"writing splice interval table to {os.path.abspath(sitOutPath)}")
+    log.debug(f"splice interval table column types:{sitDF.dtypes}")
     roundValues(sitDF, si.SITFormat)
     prettyColumns(sitDF, si.SITFormat)
     writeToCSV(sitDF, sitOutPath)
