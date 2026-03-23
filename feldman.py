@@ -138,6 +138,7 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
         site = row['Site']
         hole = row['Hole']
         core = row['Core']
+        core_id = f"{site}{hole}-{core}"
         top = row['TopSection']
         topOff = row['TopOffset']
         log.info(f"Converting Sparse Splice Interval {index+1}...")
@@ -153,8 +154,7 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
         
         # bail on inverted or zero-length intervals
         if shiftTop >= shiftBot:
-            log.error("Interval is inverted or zero-length: computed top depth {} >= computed bottom depth {}".format(shiftTop, shiftBot))
-            return
+            raise Exception(f"Interval {index+1}: {core_id} is inverted or zero-length: computed top depth {shiftTop:.3f} >= computed bottom depth {shiftBot:.3f}")
         
         affine = 0.0
         if sptype is None and index == 0: # first row - unconcerned about splice type now, it will affect next row of data
@@ -186,8 +186,7 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
             affine = prevBotCCSF - shiftTop
             log.debug("TIEing {} to previous bottom depth {}, affine shift of {}".format(shiftTop, prevBotCCSF, affine))
         else:
-            log.error("Encountered unknown splice type {}, bailing out!".format(sptype))
-            return
+            raise Exception(f"Encountered unknown splice type {sptype}, bailing out!")
 
         if prevBotCCSF is not None and prevBotCCSF > shiftTop + affine:
             log.warning("previous interval bottom MCD {} is below current interval top MCD {}".format(prevBotCCSF, shiftTop + affine))
@@ -198,9 +197,8 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
                 log.warning("interval type APPEND, adjusting affine to {}m to avoid {}m overlap".format(affine, overlap))
 
         # create data for corresponding affine - growth rate and differential offset will be filled by fillAffineRows()
-        coreid = str(site) + str(hole) + "-" + str(core)
-        if coreid not in seenCores:
-            seenCores.append(coreid)
+        if core_id not in seenCores:
+            seenCores.append(core_id)
             coreTop = secsumm.getCoreTop(site, hole, core) # use core's top for depths in affine table, not depth of TIE in splice
             affineShiftType = _spliceShiftToAffine(sptype, gap)
             fixedCore = prevRow['Hole'] + prevRow['Core'] if sptype == "TIE" else ""
@@ -210,7 +208,13 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
                                       fixedCore=fixedCore, fixedTieCsf=fixedTieCsf, shiftedTieCsf=shiftedTieCsf, comment="splice") 
             affineRows.append(affineRow)
         else:
-            log.error("holecore {} already seen, ignoring".format(coreid))
+            # Core already has an affine shift. Enure current shift for the core matches, otherwise bail.
+            for ar in affineRows:
+                if ar.site == site and ar.hole == hole and ar.core == core:
+                    offset = ar.cumOffset
+                    if offset != affine:
+                        raise Exception(f"Core {core_id} already has affine offset = {offset} from a previous interval, doesn't match current offset {affine}. Incompatible ties!")
+            log.warning(f"Core {core_id} is already in the affine table with offset matching current offset {affine} so all is well, continuing...")
         
         # create new column data 
         topCSFs.append(shiftTop)
@@ -226,7 +230,7 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
         
         # warnings
         if shiftTop >= shiftBot:
-            log.warning("{}: interval top {} at or below interval bottom {} in MBLF".format(coreid, shiftTop, shiftBot))
+            log.warning(f"{core_id}: interval top {shiftTop:.3f} at or below interval bottom {shiftBot:.3f} in MBLF")
         
         # track splice type and (optional) gap, used to determine the next interval's depths
         sptype = str.upper(row['SpliceType'])
