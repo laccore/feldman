@@ -38,7 +38,7 @@ class SparseSplice:
 
 class Tests(unittest.TestCase):
     def test_create(self):
-        ss = SparseSplice.createWithFile("../testdata/GLAD9_Site1_SparseSplice.csv")
+        ss = SparseSplice.createWithFile("testdata/GLAD9_Site1_SparseSplice.csv")
         self.assertTrue(len(ss.dataframe) == 58)
         self.assertTrue(math.isnan(ss.dataframe['Gap'].iloc[0]))
         self.assertTrue('1' in ss.getSites())

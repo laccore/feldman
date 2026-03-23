@@ -103,7 +103,7 @@ class AffineRow:
     
 class Tests(unittest.TestCase):
     def test_create(self):
-        aff = AffineTable.createWithFile("../testdata/GLAD9_Site1_Affine.csv")
+        aff = AffineTable.createWithFile("testdata/GLAD9_Site1_Affine.csv")
         self.assertTrue(len(aff.dataframe) == 94)
         self.assertTrue(sorted(aff.getSites()) == ['1'])
         self.assertTrue(aff.getOffset('1', 'B', '2', 'H') == 0.298)

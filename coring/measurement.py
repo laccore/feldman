@@ -58,7 +58,7 @@ class MeasurementData:
     
 class Tests(unittest.TestCase):
     def test_create(self):
-        md = MeasurementData.createWithFile("../testdata/GLAD9_Site1_XRF.csv", depthColumn="Sediment Depth, scaled (MBS / CSF-B)")
+        md = MeasurementData.createWithFile("testdata/GLAD9_Site1_XRF.csv", depthColumn="Sediment Depth, scaled (MBS / CSF-B)")
         self.assertTrue('Tool' in md.df)
         self.assertTrue(len(md.getByRange(74.0, 75.0)) == 185)
         self.assertTrue(len(md.getByRangeAndCore(74.0, 75.0, '25')) == 84)

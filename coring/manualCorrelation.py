@@ -124,7 +124,7 @@ class ManualOffsetTable:
 
 class Tests(unittest.TestCase):
     def test_create(self):
-        mct = ManualCorrelationTable.createWithFile("../testdata/ManualCorrelationTable.csv")
+        mct = ManualCorrelationTable.createWithFile("testdata/ManualCorrelationTable.csv")
         self.assertTrue(len(mct.df) == 90)
         row = mct.findByOffSpliceCore('1', 'D', '2')
         self.assertTrue(row['SectionDepth1'] == 0.5)
