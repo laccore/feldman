@@ -252,7 +252,7 @@ class ConvertSparseToSITDialog(QtWidgets.QDialog):
             logging.error(traceback.format_exc())
         except:
             err = sys.exc_info()
-            gui.warnbox(self, "Process failed", "{}".format("Unhandled error {}: {}".format(err[0], err[1])))
+            gui.errbox(self, "Process failed", "{}".format("Error {}:\n{}".format(err[0], err[1])))
             logging.error(traceback.format_exc())
         finally:
             self.showProgressLayout(False)
