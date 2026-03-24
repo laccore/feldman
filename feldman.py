@@ -28,6 +28,11 @@ FeldmanVersion = '1.0.5'
 OutputVocabulary = 'IODP'
 ProgressListener = None
 
+# When Corelyzer can't determine the correct bottom offset depth for a sparse splice interval,
+# it uses -1.0 to indicate the section's full length should be used as bottom offset in
+# Feldman's Sparse Splice to SIT conversion process.
+UnknownBottomOffsetSentinel = -1.0
+
 def setProgressListener(pl):
     global ProgressListener
     ProgressListener = pl
@@ -148,6 +153,10 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
         
         bot = row['BottomSection']
         botOff = row['BottomOffset']
+        if botOff == UnknownBottomOffsetSentinel: # use section's curated length as BottomOffset
+            botOff = secsumm.getSectionLength(site, hole, core, bot) * 100.0 # Convert CuratedLength(m) to cm
+            log.warning(f"Interval {index+1} has BottomOffset = -1, using {core_id}-{bot} length {botOff}cm as BottomOffset for this interval")
+
         log.info(f"  Bottom: {site}{hole}-{core}-{bot} @ {botOff}cm")
         log.debug(f"bottom section = {bot}, bottom offset = {botOff}")
         shiftBot = secsumm.getOffsetDepth(site, hole, core, bot, botOff, useScaledDepths)
