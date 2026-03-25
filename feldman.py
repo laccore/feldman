@@ -137,6 +137,11 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
     gap = None
     rowsToProcess = len(sparse.dataframe)
 
+    # track Feldman-populated BottomOffset values as (row index, bottom offset) tuples
+    # to update SIT output, otherwise UnknownBottomOffsetSentinel (-1) values from the
+    # input Sparse Splice will end up in the SIT.
+    unknownBottomOffsetRows = []
+
     for index, row in sparse.dataframe.iterrows():
         reportProgress(float(index) / rowsToProcess * 50, "Processing sparse splice interval {}...".format(index + 1))
 
@@ -155,6 +160,8 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
         botOff = row['BottomOffset']
         if botOff == UnknownBottomOffsetSentinel: # use section's curated length as BottomOffset
             botOff = secsumm.getSectionLength(site, hole, core, bot) * 100.0 # Convert CuratedLength(m) to cm
+            row['BottomOffset'] = botOff # update current row so prevBotScaledDepth calculation, which depends on prevRow, is correct
+            unknownBottomOffsetRows.append((index, botOff))
             log.warning(f"Interval {index+1} has BottomOffset = -1, using {core_id}-{bot} length {botOff}cm as BottomOffset for this interval")
 
         log.info(f"  Bottom: {site}{hole}-{core}-{bot} @ {botOff}cm")
@@ -248,8 +255,13 @@ def sparseSpliceToSIT(sparse, secsumm, sitOutPath, useScaledDepths=False, lazyAp
         sptype = str.upper(row['SpliceType'])
         gap = row['Gap'] if not numpy.isnan(row['Gap']) else None
     
-    # done parsing, create final dataframe for export
+    # Done parsing, create SIT dataframe from input Sparse Splice and add CSF-A and CCSF-A columns for Top and Bottom
     sitDF = sparse.dataframe.copy()
+
+    # update UnknownBottomOffsetSentinel BottomOffset values with correct depths
+    for row_index, botoff in unknownBottomOffsetRows:
+        sitDF.at[row_index, 'BottomOffset'] = botoff
+
     PU.insertColumns(sitDF, 6, [(si.TopDepthCSF.name, pandas.Series(topCSFs)), (si.TopDepthCCSF.name, pandas.Series(topCCSFs))])
     PU.insertColumns(sitDF, 10, [(si.BottomDepthCSF.name, pandas.Series(botCSFs)), (si.BottomDepthCCSF.name, pandas.Series(botCCSFs))])
     
