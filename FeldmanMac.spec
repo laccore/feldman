@@ -34,4 +34,4 @@ app = BUNDLE(exe,
              name='Feldman.app',
              icon='assets/feldmanicon.icns',
              bundle_identifier=None,
-             version='1.0.5')
+             version='1.0.6')
