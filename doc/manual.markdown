@@ -1,7 +1,7 @@
 Feldman User's Guide
 --------------------
-*November 4, 2025*  
-*version 1.0.5*
+*March 25, 2026*  
+*version 1.0.6*
 
 ## Introduction
 
@@ -73,6 +73,25 @@ It may optionally include:
 A sparse splice table contains one row for each interval of a sparse splice.
 Each interval is defined only in section depths, not total depths. The term "sparse"
 refers to the lack of total depths.
+
+The Splice Type (TIE or APPEND) for each interval determines the next interval's affine shift.
+
+TIE behavior is relatively straightforward:  
+The next interval will be shifted so its Top Offset aligns with the current interval's Bottom Offset.
+
+APPEND behavior is juuuust a bit more complex:  
+If no Gap is defined for the current interval and the next interval is from the same hole:  
+The next interval will be positioned based on its Section Summary depth, offset by the current interval's affine shift.
+
+If no Gap is defined for the current interval and the next interval is from a different hole than the current interval:  
+The difference between the current interval's Bottom Offset and the next interval's Top Offset is computed using *scaled depths* in the Section Summary. If that difference is positive, the next interval is positioned that distance from the current inteval's Bottom Offset (e.g. a 10cm difference would result in a 10cm gap between the two intervals). If the difference is negative, the next interval will be shifted downward so its Top Offset abuts the current interal's Bottom Offset to avoid overlapping, which is not allowed in splices.
+
+If a Gap is defined for the current interval:  
+The next interval will be positioned at the Gap's distance from
+the current interval's Bottom Offset. A Gap of 0.5m positions the next interval 0.5m below the current interval's
+Bottom Offset. A Gap of 0m makes the next interval abut the current interval.
+
+
 
 A sparse splice table must include the following columns:
 
@@ -210,8 +229,7 @@ Output Vocabulary: determines whether the IODP term "Core Type" or the LacCore t
 is used as a column name in output. IODP "Core Type" is the default. Feldman will accept
 "Core Type" or "Tool" as input regardless of this setting.
 
-The [Convert Sparse Splice to SIT][] and [Splice Measurement Data][] buttons open the dialogs
-of the same name. 
+The Convert Sparse Splice to SIT and Splice Measurement Data buttons open the corresponding dialogs.
 
 
 ### Convert Sparse Splice to SIT

@@ -1,6 +1,6 @@
 <h2 id="feldman-users-guide">Feldman User's Guide</h2>
-<p><em>November 4, 2025</em><br />
-<em>version 1.0.5</em></p>
+<p><em>March 25, 2026</em><br />
+<em>version 1.0.6</em></p>
 <h2 id="introduction">Introduction</h2>
 <p>Feldman is a software utility developed by <a href="https://cse.umn.edu/csd">CSD Facility</a> to aid in the process of aligning and splicing core sections from multiple holes, and exporting measurement data based on a splice. It runs on Macs (OSX, macOS) and Windows.</p>
 <p>Feldman evolved from a handful of conversion scripts written in <a href="https://python.org">Python</a>, and owes much of its functionality to the wonderful <a href="https://pandas.pydata.org">pandas</a> data analysis library. Feldman source code is available on <a href="https://github.com/laccore/feldman">GitHub</a>.</p>
@@ -47,6 +47,16 @@
 </blockquote>
 <h3 id="sparse-splice">Sparse Splice</h3>
 <p>A sparse splice table contains one row for each interval of a sparse splice. Each interval is defined only in section depths, not total depths. The term "sparse" refers to the lack of total depths.</p>
+<p>The Splice Type (TIE or APPEND) for each interval determines the next interval's affine shift.</p>
+<p>TIE behavior is relatively straightforward:<br />
+The next interval will be shifted so its Top Offset aligns with the current interval's Bottom Offset.</p>
+<p>APPEND behavior is juuuust a bit more complex:<br />
+If no Gap is defined for the current interval and the next interval is from the same hole:<br />
+The next interval will be positioned based on its Section Summary depth, offset by the current interval's affine shift.</p>
+<p>If no Gap is defined for the current interval and the next interval is from a different hole than the current interval:<br />
+The difference between the current interval's Bottom Offset and the next interval's Top Offset is computed using <em>scaled depths</em> in the Section Summary. If that difference is positive, the next interval is positioned that distance from the current inteval's Bottom Offset (e.g. a 10cm difference would result in a 10cm gap between the two intervals). If the difference is negative, the next interval will be shifted downward so its Top Offset abuts the current interal's Bottom Offset to avoid overlapping, which is not allowed in splices.</p>
+<p>If a Gap is defined for the current interval:<br />
+The next interval will be positioned at the Gap's distance from the current interval's Bottom Offset. A Gap of 0.5m positions the next interval 0.5m below the current interval's Bottom Offset. A Gap of 0m makes the next interval abut the current interval.</p>
 <p>A sparse splice table must include the following columns:</p>
 <blockquote>
 <pre><code>  Identity Columns: Site, Hole, Core, and Core Type/Tool
@@ -152,7 +162,7 @@
 <h3 id="main-window">Main Window</h3>
 <p><img src="images/mainwindow.png" /></p>
 <p>Output Vocabulary: determines whether the IODP term "Core Type" or the LacCore term "Tool" is used as a column name in output. IODP "Core Type" is the default. Feldman will accept "Core Type" or "Tool" as input regardless of this setting.</p>
-<p>The <a href="#convert-sparse-splice-to-sit">Convert Sparse Splice to SIT</a> and <a href="#splice-measurement-data">Splice Measurement Data</a> buttons open the dialogs of the same name.</p>
+<p>The Convert Sparse Splice to SIT and Splice Measurement Data buttons open the corresponding dialogs.</p>
 <h3 id="convert-sparse-splice-to-sit">Convert Sparse Splice to SIT</h3>
 <p>Given a section summary and sparse splice, Feldman will generate an affine table and splice interval table (SIT).</p>
 <p><img src="images/sparseToSIT.png" /></p>
