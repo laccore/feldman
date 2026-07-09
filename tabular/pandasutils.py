@@ -160,11 +160,11 @@ def forceStringDatatype(dataframe, cols):
 
 class Tests(unittest.TestCase):
     def test_readFile(self):
-        df = readFile("../testdata/GLAD9_SectionSummary.csv")
+        df = readFile("testdata/GLAD9_SectionSummary.csv")
         self.assertFalse(df.empty)
         
     def test_readHeaders(self):
-        hs = readHeaders("../testdata/GLAD9_SectionSummary.csv")
+        hs = readHeaders("testdata/GLAD9_SectionSummary.csv")
         self.assertTrue(len(hs) == 10)
         self.assertTrue('Site' in hs)
         self.assertTrue('CuratedLength' in hs)
@@ -178,16 +178,16 @@ class Tests(unittest.TestCase):
     #     self.assertTrue(len(df) == 2)
         
     def test_utf8bom_blanklines(self):
-        df = readFile("../testdata/utf8_bom_blanklines.csv")
+        df = readFile("testdata/utf8_bom_blanklines.csv")
         self.assertTrue(len(df) == 4)
 
     def test_getColumnStartingWith(self):
-        df = readFile("../testdata/GLAD9_Site1_XRF.csv")
+        df = readFile("testdata/GLAD9_Site1_XRF.csv")
         lastidx = getFirstColumnStartingWith(df, "Sediment Depth")
         self.assertTrue(lastidx == 10)
 
     def test_getLastColumnStartingWith(self):
-        df = readFile("../testdata/GLAD9_Site1_XRF.csv")
+        df = readFile("testdata/GLAD9_Site1_XRF.csv")
         lastidx = getLastColumnStartingWith(df, "Sediment Depth")
         self.assertTrue(lastidx == 11)
         
